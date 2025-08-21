@@ -69,26 +69,49 @@ export const getTreasuryAddressForChain = (chainId) => {
 };
 
 
-// 🔧 FIX 6: Improved API_BASE_URL logic for staging/production
-export const API_BASE_URL = (() => {
+// 🔧 FIX 2: Improved API_BASE_URL logic with Vite environment detection
+export const getAPIBaseURL = () => {
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
+  const mode = import.meta.env.MODE;
+  const vercelUrl = import.meta.env.VITE_VERCEL_URL;
+  const viteApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
   
-  console.log('🔧 API_BASE_URL - Hostname:', hostname, 'Protocol:', protocol);
+  console.log('🔧 API_BASE_URL detection:', {
+    hostname,
+    protocol,
+    mode,
+    vercelUrl,
+    viteApiBaseUrl
+  });
   
-  if (hostname === 'localhost') {
-    return 'http://localhost:4000';
+  // Priority 1: Vite environment variable
+  if (viteApiBaseUrl) {
+    console.log('🔧 Using VITE_API_BASE_URL:', viteApiBaseUrl);
+    return viteApiBaseUrl;
   }
   
-  // Check for staging environment
-  if (hostname.includes('staging') || hostname.includes('preview') || hostname.includes('vercel.app')) {
-    // For Vercel preview deployments, use the same domain
-    return `${protocol}//${hostname}`;
+  // Priority 2: Local development
+  if (hostname === 'localhost' || mode === 'development') {
+    const localUrl = 'http://localhost:4000';
+    console.log('🔧 Using local development URL:', localUrl);
+    return localUrl;
   }
   
-  // Production fallback
-  return 'https://buybrics.vercel.app';
-})();
+  // Priority 3: Vercel preview deployments
+  if (hostname.includes('staging') || hostname.includes('preview') || hostname.includes('vercel.app') || vercelUrl) {
+    const previewUrl = `${protocol}//${hostname}`;
+    console.log('🔧 Using Vercel preview URL:', previewUrl);
+    return previewUrl;
+  }
+  
+  // Priority 4: Production fallback
+  const productionUrl = 'https://buybrics.vercel.app';
+  console.log('🔧 Using production URL:', productionUrl);
+  return productionUrl;
+};
+
+export const API_BASE_URL = getAPIBaseURL();
 
 console.log('API_BASE_URL:', API_BASE_URL);
 

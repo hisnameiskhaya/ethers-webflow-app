@@ -17,7 +17,7 @@ echo ""
 echo "🔧 Test 1: Health check"
 curl -X GET "$BASE_URL/api/health" \
   -H "Content-Type: application/json" \
-  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n"
+  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n" | jq '.' 2>/dev/null || echo "Response received (not JSON)"
 
 # Test 2: Get deposits for a test wallet
 echo ""
@@ -25,7 +25,7 @@ echo "🔧 Test 2: Get deposits for test wallet"
 TEST_WALLET="0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
 curl -X GET "$BASE_URL/api/deposits/$TEST_WALLET" \
   -H "Content-Type: application/json" \
-  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n"
+  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n" | jq '.' 2>/dev/null || echo "Response received (not JSON)"
 
 # Test 3: Create a test deposit (this will fail validation but test the endpoint)
 echo ""
@@ -38,7 +38,7 @@ curl -X POST "$BASE_URL/api/deposits" \
     "txHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
     "chainId": 8453
   }' \
-  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n"
+  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n" | jq '.' 2>/dev/null || echo "Response received (not JSON)"
 
 # Test 4: Test with invalid data (should show validation errors)
 echo ""
@@ -51,7 +51,7 @@ curl -X POST "$BASE_URL/api/deposits" \
     "txHash": "",
     "chainId": "invalid"
   }' \
-  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n"
+  -w "\nStatus: %{http_code}\nTime: %{time_total}s\n" | jq '.' 2>/dev/null || echo "Response received (not JSON)"
 
 echo ""
 echo "🔧 API tests completed!"

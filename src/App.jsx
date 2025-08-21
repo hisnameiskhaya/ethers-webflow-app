@@ -473,6 +473,7 @@ function App() {
   const [isFetchingBalances, setIsFetchingBalances] = useState(false);
   const [deposits, setDeposits] = useState([]);
   const [isBRICSIntegration, setIsBRICSIntegration] = useState(false);
+  const [isDepositInProgress, setIsDepositInProgress] = useState(false); // 🔧 FIX 1: Prevent double deposits
   
   const debugBalance = async (provider, address) => {
     const contract = new ethers.Contract(
@@ -1182,6 +1183,14 @@ const handleSendUSDTToTreasury = async (amount, chainId) => {
 };
 
 const handleDeposit = async () => {
+  console.log('>> deposit start - handleDeposit called');
+  
+  // 🔧 FIX 1: Prevent double execution
+  if (isDepositInProgress) {
+    console.log('>> deposit blocked - already in progress');
+    return;
+  }
+  
   if (!account || !provider) {
     setError('Please connect your wallet first.');
     return;
@@ -1202,6 +1211,7 @@ const handleDeposit = async () => {
   }
 
   try {
+    setIsDepositInProgress(true); // 🔧 FIX 1: Set deposit in progress flag
     setIsProcessing(true);
     setError(null);
     setShowSnackbar(true);
@@ -1325,6 +1335,8 @@ const handleDeposit = async () => {
     setShowSnackbar(false);
   } finally {
     setIsProcessing(false);
+    setIsDepositInProgress(false); // 🔧 FIX 1: Reset deposit in progress flag
+    console.log('>> deposit complete - handleDeposit finished');
   }
 };
 

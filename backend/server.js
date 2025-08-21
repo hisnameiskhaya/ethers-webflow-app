@@ -70,13 +70,19 @@ console.log('🔧 Connecting to MongoDB with URI:', MONGODB_URI.replace(/:([^@]+
 console.log('🔧 MongoDB URI length:', MONGODB_URI.length);
 
 let mongooseConnection = null;
+let connectionAttempts = 0;
+const maxConnectionAttempts = 2;
+
 async function connectToMongoDB() {
   if (mongooseConnection) {
     console.log('🔧 Reusing existing MongoDB connection');
     return mongooseConnection;
   }
+  
   try {
-    console.log('🔧 Attempting MongoDB connection...');
+    connectionAttempts++;
+    console.log(`🔧 Attempting MongoDB connection (attempt ${connectionAttempts}/${maxConnectionAttempts})...`);
+    
     mongooseConnection = await mongoose.connect(MONGODB_URI, {
       ssl: true,
       retryWrites: true,
@@ -86,9 +92,13 @@ async function connectToMongoDB() {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 20000,
     });
-    console.log('🔧 MongoDB connected successfully');
+    
+    console.log('✅ MongoDB connected to', MONGODB_URI.replace(/:([^@]+)@/, ':****@'));
     console.log('🔧 Database Name:', mongooseConnection.connection.db.databaseName);
     console.log('🔧 Collections:', await mongooseConnection.connection.db.listCollections().toArray());
+    
+    // Reset connection attempts on success
+    connectionAttempts = 0;
     return mongooseConnection;
   } catch (err) {
     console.error('🔧 MongoDB connection error:', {
@@ -97,8 +107,15 @@ async function connectToMongoDB() {
       name: err.name,
       stack: err.stack,
     });
-    console.error('🔧 MongoDB connection failed - exiting process');
-    process.exit(1);
+    
+    if (connectionAttempts < maxConnectionAttempts) {
+      console.log(`🔧 Retrying MongoDB connection in 2 seconds... (attempt ${connectionAttempts}/${maxConnectionAttempts})`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return connectToMongoDB();
+    } else {
+      console.error('🔧 MongoDB connection failed after all retries - exiting process');
+      process.exit(1);
+    }
   }
 }
 
@@ -347,6 +364,7 @@ app.get('/api/deposits/tx/:txHash', async (req, res) => {
 
 app.post('/api/deposits', async (req, res) => {
   try {
+    console.log('💸 [DEPOSIT RECEIVED]:', req.body);
     console.log('🔧 /api/deposits endpoint hit');
     console.log('🔧 Request headers:', req.headers);
     console.log('🔧 Request body:', req.body);
@@ -362,7 +380,7 @@ app.post('/api/deposits', async (req, res) => {
 
     if (errors.length > 0) {
       console.error('🔧 Validation errors:', errors);
-      return res.status(400).json({ success: false, error: 'Validation failed', details: errors });
+      return res.status(422).json({ success: false, error: 'Validation failed', details: errors });
     }
 
     const normalizedTxHash = txHash.toLowerCase();
@@ -424,7 +442,13 @@ app.post('/api/deposits', async (req, res) => {
         await triggerSheetSync();
         console.log('🔧 Triggered Google Sheets sync');
         
-        console.log('🔧 Returning success response');
+        console.log('💸 [DEPOSIT SAVED]:', {
+          userAddress: normalizedUserAddress,
+          amount: parsedAmount,
+          txHash: normalizedTxHash,
+          chainId: parsedChainId,
+          depositId: deposit._id
+        });
         return res.json({
           success: true,
           deposit,
@@ -449,6 +473,7 @@ app.post('/api/deposits', async (req, res) => {
     console.error('🔧 Failed to save deposit after all retries');
     return res.status(500).json({ success: false, error: 'Failed to save deposit after retries' });
   } catch (error) {
+    console.error('💸 [DEPOSIT ERROR]:', error);
     console.error('Error saving deposit:', error);
     res.status(500).json({ success: false, error: `Failed to save deposit: ${error.message}` });
   }
