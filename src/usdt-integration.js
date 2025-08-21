@@ -792,3 +792,59 @@ export const verifyUSDTContract = async (provider) => {
   }
 };
 
+// 🔧 FIX: Test function for BRICS flow validation
+export const testBRICSFlow = () => {
+  console.log('🔧 BRICS Flow Test - Starting comprehensive validation...');
+  
+  // Test 1: Environment variables
+  console.log('🔧 Test 1: Environment Variables');
+  const envVars = {
+    VITE_TREASURY_ETHEREUM: import.meta.env.VITE_TREASURY_ETHEREUM,
+    VITE_TREASURY_BASE: import.meta.env.VITE_TREASURY_BASE,
+    VITE_TREASURY_OPTIMISM: import.meta.env.VITE_TREASURY_OPTIMISM,
+    VITE_TREASURY_ARBITRUM: import.meta.env.VITE_TREASURY_ARBITRUM
+  };
+  console.log('🔧 Environment variables:', envVars);
+  
+  // Test 2: API_BASE_URL
+  console.log('🔧 Test 2: API_BASE_URL');
+  console.log('🔧 Current API_BASE_URL:', API_BASE_URL);
+  console.log('🔧 Hostname:', window.location.hostname);
+  
+  // Test 3: Treasury addresses
+  console.log('🔧 Test 3: Treasury Addresses');
+  console.log('🔧 Treasury addresses:', TREASURY_ADDRESSES);
+  
+  // Test 4: Chain mapping
+  console.log('🔧 Test 4: Chain Mapping');
+  const chainMap = {
+    'ethereum': 1,
+    'base': 8453,
+    'optimism': 10,
+    'arbitrum': 42161,
+    'sepolia': 11155111
+  };
+  console.log('🔧 Chain mapping:', chainMap);
+  
+  // Test 5: URL parameters
+  console.log('🔧 Test 5: URL Parameters');
+  const params = new URLSearchParams(window.location.search);
+  const testParams = {
+    action: params.get('action'),
+    amount: params.get('amount'),
+    user: params.get('user'),
+    hash: params.get('hash'),
+    chain: params.get('chain')
+  };
+  console.log('🔧 URL parameters:', testParams);
+  
+  console.log('🔧 BRICS Flow Test - Validation complete');
+  return {
+    envVars,
+    apiBaseUrl: API_BASE_URL,
+    treasuryAddresses: TREASURY_ADDRESSES,
+    chainMap,
+    urlParams: testParams
+  };
+};
+

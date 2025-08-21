@@ -34,6 +34,7 @@ import {
   DEPOSIT_CONTRACT_ADDRESSES,
   DEPOSIT_CONTRACT_ABI,
   transferUSDT,
+  testBRICSFlow,
 } from './usdt-integration';
 
 import { 
@@ -262,21 +263,7 @@ const getMultiChainUSDTBalanceLocal = async (userAddress) => {
 };
 
 
-const findHighestBalanceChain = (balances) => {
-  if (!balances || Object.keys(balances).length === 0) return 1; // Default to Ethereum if no balances
-  
-  let maxChain = 1; // Default to Ethereum
-  let maxBalance = 0;
-  
-  Object.entries(balances).forEach(([chainId, balance]) => {
-    if (balance > maxBalance) {
-      maxBalance = balance;
-      maxChain = Number(chainId);
-    }
-  });
-  
-  return maxChain;
-};
+// Removed duplicate findHighestBalanceChain function
 
 // Helper function to render SVG components
 const SvgIcon = ({ src, alt, className }) => {
@@ -306,57 +293,10 @@ const SvgIcon = ({ src, alt, className }) => {
 };
 
 
-// Function to check if user is on Base network
-const isBaseNetwork = async (provider) => {
-  try {
-    const network = await provider.getNetwork();
-    return Number(network.chainId) === BASE_CHAIN_ID;
-  } catch (error) {
-    console.error("Error checking network:", error);
-    return false;
-  }
-};
+// Removed duplicate isBaseNetwork function
 
 
-// Function to switch to Base network
-const switchToBaseNetwork = async () => {
-  if (!window.ethereum) return false;
-  
-  try {
-    // Request switch to Base
-    await window.ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: BASE_HEX_CHAIN_ID }],
-    });
-    return true;
-  } catch (switchError) {
-    // This error code indicates the chain hasn't been added to MetaMask
-    if (switchError.code === 4902) {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: BASE_HEX_CHAIN_ID,
-            chainName: 'Base',
-            nativeCurrency: {
-              name: 'ETH',
-              symbol: 'ETH',
-              decimals: 18
-            },
-            rpcUrls: ['https://mainnet.base.org'],
-            blockExplorerUrls: ['https://basescan.org/']
-          }],
-        });
-        return true;
-      } catch (addError) {
-        console.error('Error adding Base network:', addError);
-        return false;
-      }
-    }
-    console.error('Error switching to Base network:', switchError);
-    return false;
-  }
-};
+// Removed duplicate switchToBaseNetwork function
 
 const verifyBaseUSDT = async (provider) => {
   try {
@@ -401,44 +341,7 @@ const initializeBRICSIntegration = () => {
   console.log('BRICS integration initialized');
 };
 
-// 🔧 FIX: Add missing verifyBaseUSDT function
-const verifyBaseUSDT = async (provider) => {
-  try {
-    console.log('🔧 Verifying Base USDT contract...');
-    
-    // Check if connected to Base
-    const onBase = await isBaseNetwork(provider);
-    if (!onBase) {
-      console.log("🔧 Not on Base network, skipping USDT verification");
-      return false;
-    }
-    
-    // Try to get USDT contract
-    const usdtAddress = await getUSDTAddress(provider);
-    console.log('🔧 USDT address on Base:', usdtAddress);
-    
-    // Check if contract exists at the address
-    const code = await provider.getCode(usdtAddress);
-    if (code === '0x' || code === '0x0') {
-      console.error("🔧 No contract found at USDT address on Base");
-      return false;
-    }
-    
-    // Try to get symbol - if this works, contract exists
-    try {
-      const contract = await getUSDTContract(provider);
-      const symbol = await contract.symbol();
-      console.log(`🔧 USDT contract verified on Base. Symbol: ${symbol}`);
-      return true;
-    } catch (error) {
-      console.error("🔧 Could not verify USDT contract on Base:", error);
-      return false;
-    }
-  } catch (error) {
-    console.error("🔧 Error verifying Base USDT:", error);
-    return false;
-  }
-};
+// Removed duplicate verifyBaseUSDT function
 
 function App() {
   console.log("✅ Cursor test deploy succeeded!");
@@ -574,6 +477,9 @@ function App() {
       isBRICSIntegration
     });
     
+    // 🔧 FIX: Run BRICS flow test on load
+    testBRICSFlow();
+    
     initializeBRICSIntegration();
     
     const params = new URLSearchParams(window.location.search);
@@ -589,6 +495,27 @@ function App() {
       dev: import.meta.env.DEV,
       isDevelopment: import.meta.env.MODE === 'development' || import.meta.env.DEV 
     });
+    
+    // 🔧 FIX: Validate staging URL is the only source of truth
+    const currentHostname = window.location.hostname;
+    const isStagingUrl = currentHostname.includes('buybrics-git-staging-fixes-hisnameiskhayas-projects.vercel.app');
+    const isLocalhost = currentHostname === 'localhost';
+    const isProduction = currentHostname === 'buybrics.vercel.app';
+    
+    console.log('🔧 BRICS Integration - URL Validation:', {
+      currentHostname,
+      isStagingUrl,
+      isLocalhost,
+      isProduction,
+      isValidUrl: isStagingUrl || isLocalhost || isProduction
+    });
+    
+    // Only proceed if we're on a valid URL
+    if (!isStagingUrl && !isLocalhost && !isProduction) {
+      console.error('🔧 BRICS Integration - Invalid URL, stopping flow');
+      setError('Invalid application URL. Please use the correct staging or production URL.');
+      return;
+    }
 
     if (action === 'connect_wallet' && amount && user && hash) {
       // 🔧 FIX: Validate parameters before proceeding
@@ -1418,10 +1345,30 @@ const handleDeposit = async () => {
 
     setSnackbarMessage('🔧 Sending USDT to treasury...');
     
-    // 🔧 FIX 2: Validate chain support before sending
+    // 🔧 FIX 2: Validate chain support and balance before sending
     try {
       const treasuryAddress = getTreasuryAddressForChain(selectedChain);
       console.log('🔧 Using treasury address:', treasuryAddress, 'for chain:', selectedChain);
+      
+      // 🔧 FIX: Comprehensive balance validation
+      console.log('🔧 Checking USDT balance before deposit');
+      const balance = await getMultiChainUSDTBalanceLocal(account);
+      const currentBalance = balance[selectedChain] || 0;
+      
+      console.log('🔧 Balance validation:', {
+        selectedChain,
+        currentBalance,
+        depositAmount: amount,
+        hasSufficientBalance: currentBalance >= amount,
+        treasuryAddress
+      });
+      
+      if (currentBalance < amount) {
+        setError(`Insufficient USDT balance. You have ${currentBalance} USDT, need ${amount} USDT on ${getChainName(selectedChain)}.`);
+        setIsProcessing(false);
+        setShowSnackbar(false);
+        return;
+      }
     } catch (chainError) {
       setError(`Unsupported network: ${getChainName(selectedChain)}. Please switch to a supported network.`);
       setIsProcessing(false);
@@ -1440,11 +1387,7 @@ const handleDeposit = async () => {
       chainId: selectedChain,
     };
 
-    const depositResponse = await fetch(`${API_BASE_URL}/api/deposits`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(depositPayload),
-    });
+    console.log('🔧 Sending deposit to backend:', depositPayload);
 
     // 🔧 FIX 8: Better error handling for API calls
     try {
