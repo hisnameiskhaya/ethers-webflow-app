@@ -37,6 +37,9 @@ import {
   testBRICSFlow,
 } from './usdt-integration';
 
+// Import debug script for Ethereum flow
+import './debug-ethereum-deposit.js';
+
 import { 
   logContractError, 
   monitorProviderStatus, 
@@ -619,6 +622,12 @@ function App() {
               };
               targetChainId = chainMap[chain.toLowerCase()] || 8453;
               console.log('🔧 Target chain from URL parameter:', chain, '-> Chain ID:', targetChainId);
+              
+              // 🔧 FIX: Force Ethereum chain if specified
+              if (chain.toLowerCase() === 'ethereum') {
+                targetChainId = 1;
+                console.log('🔧 FORCING Ethereum chain (ID: 1) as specified in URL parameter');
+              }
             } else {
               console.log('🔧 No chain parameter provided, using default (Base):', targetChainId);
             }
@@ -688,7 +697,10 @@ function App() {
                   targetBalance,
                   depositAmount,
                   symbol,
-                  hasSufficientBalance: targetBalance >= depositAmount
+                  hasSufficientBalance: targetBalance >= depositAmount,
+                  isEthereum: targetChainId === 1,
+                  expectedUSDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+                  usdtMatches: usdtAddress.toLowerCase() === '0xdAC17F958D2ee523a2206206994597C13D831ec7'.toLowerCase()
                 });
                 
                 if (targetBalance < depositAmount) {
@@ -1396,7 +1408,10 @@ const handleSendUSDTToTreasury = async (amount, chainId) => {
       treasuryAddress,
       userAddress: userAddress.substring(0, 10) + '...',
       chainId,
-      chainName: getChainName(chainId)
+      chainName: getChainName(chainId),
+      isEthereum: chainId === 1,
+      expectedTreasury: '0xe4f1c79c47fa2de285cd8fb6f6476495bd08538f',
+      treasuryMatches: treasuryAddress.toLowerCase() === '0xe4f1c79c47fa2de285cd8fb6f6476495bd08538f'.toLowerCase()
     });
     
     return await transferUSDT(freshSigner, amount.toString(), treasuryAddress, chainId, 2);
