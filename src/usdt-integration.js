@@ -4,8 +4,8 @@ import { JsonRpcProvider } from 'ethers';
 
 // USDT Contract Addresses for different chains
 const CONTRACT_ADDRESSES = {
-  1: '0xdac17f958d2ee523a2206206994597c13d831ec7',   // Ethereum Mainnet
-  8453: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',  // Base Chain 
+  1: '0xdAC17F958D2ee523a2206206994597C13D831ec7',   // Ethereum Mainnet (correct checksum)
+  8453: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',  // Base Chain (correct address)
   10: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58',   // Optimism
   42161: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', // Arbitrum
   11155111: '0x638F9132EA2737Fa15b200627516FCe77bE6CE53', // Sepolia MockUSDT
@@ -139,7 +139,7 @@ export const validateTreasuryEnvironment = () => {
 // Validate on module load
 validateTreasuryEnvironment();
 
-// USDT Contract ABI (Simplified version with only the functions we need)
+// USDT Contract ABI (Simplified version with only the essential functions)
 export const USDT_ABI = [
   {
     "constant": true,
@@ -153,20 +153,6 @@ export const USDT_ABI = [
     "inputs": [],
     "name": "decimals",
     "outputs": [{"name": "", "type": "uint8"}],
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "name",
-    "outputs": [{"name": "", "type": "string"}],
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "symbol",
-    "outputs": [{"name": "", "type": "string"}],
     "type": "function"
   },
   {
@@ -198,37 +184,6 @@ export const USDT_ABI = [
     "name": "transfer",
     "outputs": [{"name": "success", "type": "bool"}],
     "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {"name": "_from", "type": "address"},
-      {"name": "_to", "type": "address"},
-      {"name": "_value", "type": "uint256"}
-    ],
-    "name": "transferFrom",
-    "outputs": [{"name": "success", "type": "bool"}],
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {"indexed": true, "name": "from", "type": "address"},
-      {"indexed": true, "name": "to", "type": "address"},
-      {"indexed": false, "name": "value", "type": "uint256"}
-    ],
-    "name": "Transfer",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {"indexed": true, "name": "owner", "type": "address"},
-      {"indexed": true, "name": "spender", "type": "address"},
-      {"indexed": false, "name": "value", "type": "uint256"}
-    ],
-    "name": "Approval",
-    "type": "event"
   }
 ];
 
@@ -385,6 +340,15 @@ export const getUSDTContract = async (ethProvider, chainId) => {
       throw new Error(`No USDT contract address for chain ${resolvedChainId}`);
     }
 
+    // 🔧 FIX: Add comprehensive debugging for contract instantiation
+    console.log('🔧 USDT Contract Debug:', {
+      chainId: resolvedChainId,
+      usdtAddress,
+      expectedAddress: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+      isEthereum: resolvedChainId === 1,
+      addressMatches: usdtAddress.toLowerCase() === '0xdAC17F958D2ee523a2206206994597C13D831ec7'.toLowerCase()
+    });
+
     let providerOrSigner = ethProvider;
     if (ethProvider.getSigner) {
       try {
@@ -405,12 +369,20 @@ export const getUSDTContract = async (ethProvider, chainId) => {
     }
 
     const contract = new ethers.Contract(usdtAddress, USDT_ABI, providerOrSigner);
-    // Verify the contract instance has the expected methods
-    if (typeof contract.transfer !== 'function' || typeof contract.approve !== 'function') {
-      throw new Error('Contract instance is invalid: missing required methods (transfer/approve)');
+    
+    // 🔧 FIX: Verify the contract instance has the expected methods
+    if (typeof contract.transfer !== 'function' || typeof contract.approve !== 'function' || typeof contract.allowance !== 'function') {
+      throw new Error('Contract instance is invalid: missing required methods (transfer/approve/allowance)');
     }
 
-    console.log(`Created USDT contract instance at ${usdtAddress} for chain ${resolvedChainId}`);
+    console.log(`🔧 Created USDT contract instance at ${usdtAddress} for chain ${resolvedChainId}`);
+    console.log(`🔧 Contract methods available:`, {
+      transfer: typeof contract.transfer,
+      approve: typeof contract.approve,
+      allowance: typeof contract.allowance,
+      balanceOf: typeof contract.balanceOf,
+      decimals: typeof contract.decimals
+    });
     return contract;
   } catch (error) {
     console.error(`Error creating USDT contract for chain ${chainId || 'unknown'}:`, error);
@@ -519,16 +491,37 @@ export const getTreasuryUSDTBalance = async (provider) => {
 // Check if user has approved USDT spending
 export const checkUSDTAllowance = async (provider, userAddress, chainId, spenderAddress = DEPOSIT_CONTRACT_ADDRESSES[chainId]) => {
   try {
+    // 🔧 FIX: Add debugging before allowance call
+    console.log('🔧 USDT Allowance Debug:', {
+      userAddress,
+      chainId,
+      spenderAddress,
+      depositContractAddress: DEPOSIT_CONTRACT_ADDRESSES[chainId]
+    });
+
     const contract = await getUSDTContract(provider, chainId);
     const depositContractAddress = spenderAddress || DEPOSIT_CONTRACT_ADDRESSES[chainId];
     if (!depositContractAddress) {
       throw new Error(`No DepositContract address for chain ${chainId}`);
     }
 
+    console.log('🔧 Calling allowance with:', {
+      userAddress,
+      spenderAddress: depositContractAddress,
+      contractAddress: contract.target
+    });
+
     const allowance = await contract.allowance(userAddress, depositContractAddress);
+    console.log('🔧 Allowance result:', allowance.toString());
+    
     return await formatUSDTAmount(allowance, provider);
   } catch (error) {
-    console.error("Error checking USDT allowance:", error);
+    console.error("🔧 Error checking USDT allowance:", error);
+    console.error("🔧 Error details:", {
+      message: error.message,
+      code: error.code,
+      data: error.data
+    });
     return 0;
   }
 };
