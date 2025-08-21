@@ -626,28 +626,80 @@ function App() {
             // Set the target chain for the deposit
             setSelectedChain(targetChainId);
             
-            // 🔧 FIX: Check USDT balance before proceeding
+            // 🔧 FIX: Check USDT balance before proceeding - FORCE TARGET CHAIN
             if (account && provider) {
               try {
-                console.log('🔧 BRICS Integration - Checking USDT balance before deposit');
-                const balance = await getMultiChainUSDTBalanceLocal(account);
-                const targetBalance = balance[targetChainId] || 0;
+                console.log('🔧 BRICS Integration - Checking USDT balance for TARGET CHAIN:', targetChainId);
+                
+                // 🔧 FIX: Force balance check for specific chain instead of multi-chain
+                const { ethers } = await import('ethers');
+                
+                // USDT addresses for different chains
+                const USDT_ADDRESSES = {
+                  1: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // Ethereum
+                  8453: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', // Base
+                  10: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', // Optimism
+                  42161: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9' // Arbitrum
+                };
+                
+                const USDT_ABI = [
+                  'function balanceOf(address owner) view returns (uint256)',
+                  'function decimals() view returns (uint8)',
+                  'function symbol() view returns (string)'
+                ];
+                
+                // Get RPC for target chain
+                let rpcUrl;
+                if (targetChainId === 1) {
+                  rpcUrl = 'https://eth-mainnet.g.alchemy.com/v2/FlBOuTS3mAuXwKlI5pIitlyVpSYwgtC8';
+                } else if (targetChainId === 8453) {
+                  rpcUrl = 'https://mainnet.base.org';
+                } else if (targetChainId === 10) {
+                  rpcUrl = 'https://mainnet.optimism.io';
+                } else if (targetChainId === 42161) {
+                  rpcUrl = 'https://arb1.arbitrum.io/rpc';
+                }
+                
+                if (!rpcUrl) {
+                  throw new Error(`No RPC URL for chain ${targetChainId}`);
+                }
+                
+                const chainProvider = new ethers.JsonRpcProvider(rpcUrl);
+                const usdtAddress = USDT_ADDRESSES[targetChainId];
+                
+                if (!usdtAddress) {
+                  throw new Error(`No USDT address for chain ${targetChainId}`);
+                }
+                
+                const contract = new ethers.Contract(usdtAddress, USDT_ABI, chainProvider);
+                const [balance, decimals, symbol] = await Promise.all([
+                  contract.balanceOf(account),
+                  contract.decimals(),
+                  contract.symbol()
+                ]);
+                
+                const targetBalance = parseFloat(ethers.formatUnits(balance, decimals));
                 const depositAmount = parseFloat(amount);
                 
-                console.log('🔧 BRICS Integration - Balance check:', {
+                console.log('🔧 BRICS Integration - TARGET CHAIN Balance check:', {
                   targetChainId,
+                  targetChainName: getChainName(targetChainId),
+                  usdtAddress,
                   targetBalance,
                   depositAmount,
+                  symbol,
                   hasSufficientBalance: targetBalance >= depositAmount
                 });
                 
                 if (targetBalance < depositAmount) {
-                  console.error('🔧 BRICS Integration - Insufficient USDT balance');
+                  console.error('🔧 BRICS Integration - Insufficient USDT balance on target chain');
                   setError(`Insufficient USDT balance. You have ${targetBalance} USDT, need ${depositAmount} USDT on ${getChainName(targetChainId)}.`);
                   return;
                 }
               } catch (balanceError) {
-                console.warn('🔧 BRICS Integration - Could not check balance, proceeding anyway:', balanceError);
+                console.error('🔧 BRICS Integration - Balance check failed:', balanceError);
+                setError(`Failed to check USDT balance on ${getChainName(targetChainId)}: ${balanceError.message}`);
+                return;
               }
               console.log('🔧 BRICS Integration - Wallet already connected, checking chain');
               const network = await provider.getNetwork();
@@ -1297,10 +1349,24 @@ const handleSendUSDTToTreasury = async (amount, chainId) => {
     // Get fresh provider and signer
     const freshProvider = new ethers.BrowserProvider(window.ethereum);
     const freshSigner = await freshProvider.getSigner();
+    const userAddress = await freshSigner.getAddress();
+    
+    console.log('🔧 handleSendUSDTToTreasury - User details:', {
+      userAddress: userAddress.substring(0, 10) + '...',
+      amount,
+      chainId,
+      chainName: getChainName(chainId)
+    });
     
     // Verify we're on the correct network
     const network = await freshProvider.getNetwork();
     const currentChainId = Number(network.chainId);
+    
+    console.log('🔧 handleSendUSDTToTreasury - Network check:', {
+      currentChainId,
+      targetChainId: chainId,
+      needsChainSwitch: currentChainId !== chainId
+    });
     
     if (currentChainId !== chainId) {
       console.log('🔧 Network mismatch. Current:', currentChainId, 'Required:', chainId);
@@ -1311,16 +1377,37 @@ const handleSendUSDTToTreasury = async (amount, chainId) => {
       // Reinitialize after network switch
       const newProvider = new ethers.BrowserProvider(window.ethereum);
       const newSigner = await newProvider.getSigner();
-      return await transferUSDT(newSigner, amount.toString(), getTreasuryAddressForChain(chainId), chainId, 2);
+      const treasuryAddress = getTreasuryAddressForChain(chainId);
+      
+      console.log('🔧 handleSendUSDTToTreasury - After chain switch:', {
+        treasuryAddress,
+        userAddress: userAddress.substring(0, 10) + '...',
+        amount,
+        chainId
+      });
+      
+      return await transferUSDT(newSigner, amount.toString(), treasuryAddress, chainId, 2);
     }
     
     // Transfer USDT to treasury
     const treasuryAddress = getTreasuryAddressForChain(chainId);
-    console.log('🔧 Transferring', amount, 'USDT to treasury:', treasuryAddress);
+    console.log('🔧 handleSendUSDTToTreasury - Transfer details:', {
+      amount,
+      treasuryAddress,
+      userAddress: userAddress.substring(0, 10) + '...',
+      chainId,
+      chainName: getChainName(chainId)
+    });
     
     return await transferUSDT(freshSigner, amount.toString(), treasuryAddress, chainId, 2);
   } catch (error) {
-    console.error('🔧 Error in handleSendUSDTToTreasury:', error);
+    console.error('🔧 Error in handleSendUSDTToTreasury:', {
+      error: error.message,
+      amount,
+      chainId,
+      chainName: getChainName(chainId),
+      userAddress: account ? account.substring(0, 10) + '...' : 'unknown'
+    });
     throw error;
   }
 };

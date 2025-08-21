@@ -688,7 +688,13 @@ export const transferUSDT = async (signer, amount, to, chainId, maxAttempts = 3)
     }
 
     const signerAddress = await signer.getAddress();
-    console.log(`Initiating transfer with signer: ${signerAddress}, chain: ${chainId}`);
+    console.log(`🔧 transferUSDT - Initiating transfer:`, {
+      signerAddress: signerAddress.substring(0, 10) + '...',
+      amount,
+      to,
+      chainId,
+      chainName: getChainName(chainId)
+    });
 
     const contract = await getUSDTContract(signer, chainId);
     if (!contract || typeof contract.transfer !== 'function') {
