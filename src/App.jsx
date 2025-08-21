@@ -541,8 +541,9 @@ function App() {
     const amount = params.get('amount');
     const user = params.get('user');
     const hash = params.get('hash');
+    const chain = params.get('chain'); // 🔧 FIX 1: Add chain parameter support
 
-    console.log('BRICS Integration - URL Parameters:', { action, amount, user, hash });
+    console.log('BRICS Integration - URL Parameters:', { action, amount, user, hash, chain });
 
     if (action === 'connect_wallet' && amount && user && hash) {
       const secret = 'nxceebao7frdn1jnv7pss3ss42hs3or5';
@@ -560,78 +561,137 @@ function App() {
         setDepositAmount(amount);
         setIsBRICSIntegration(true);
         
-        // Auto-connect wallet and execute deposit
+        // 🔧 FIX 1: Auto-connect wallet with chain switching
         setTimeout(async () => {
-          if (account && provider) {
-            console.log('BRICS Integration - Executing deposit');
-            await handleDeposit();
-          } else {
-            console.log('BRICS Integration - Wallet not connected, attempting to connect');
-            // Use the same mobile redirect logic as connectWallet
-            const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS|FxiOS/i.test(navigator.userAgent) || 
-                                  (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
-                                  /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.platform);
-            const isMetaMaskBrowser = /MetaMaskMobile/.test(navigator.userAgent);
+          try {
+            console.log('🔧 BRICS Integration - Starting auto-connect process');
             
-            console.log('BRICS Integration - Mobile detection:', { 
-              isMobileDevice, 
-              isMetaMaskBrowser, 
-              isEmbedded,
-              userAgent: navigator.userAgent,
-              maxTouchPoints: navigator.maxTouchPoints,
-              platform: navigator.platform
-            });
+            // Determine target chain
+            let targetChainId = 8453; // Default to Base
+            if (chain) {
+              const chainMap = {
+                'ethereum': 1,
+                'base': 8453,
+                'optimism': 10,
+                'arbitrum': 42161,
+                'sepolia': 11155111
+              };
+              targetChainId = chainMap[chain.toLowerCase()] || 8453;
+              console.log('🔧 Target chain from URL parameter:', chain, '-> Chain ID:', targetChainId);
+            }
             
-            if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
-              console.log('BRICS Integration - Mobile device detected, redirecting to MetaMask app');
-              localStorage.setItem('walletConnectionAttempt', 'true');
-              const vercelAppUrl = 'https://buy.brics.ninja';
-              const metamaskUrl = `https://metamask.app.link/dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
-              console.log('BRICS Integration - Opening MetaMask app URL:', metamaskUrl);
+            if (account && provider) {
+              console.log('🔧 BRICS Integration - Wallet already connected, checking chain');
+              const network = await provider.getNetwork();
+              const currentChainId = Number(network.chainId);
               
-              // Try multiple redirect methods for better mobile compatibility
-              try {
-                console.log('BRICS Integration - Attempting MetaMask deep link:', metamaskUrl);
-                
-                // Method 1: Direct window.open
-                window.open(metamaskUrl, '_blank');
-                
-                // Method 2: Set location after a delay (fallback)
-                setTimeout(() => {
-                  console.log('BRICS Integration - Fallback 1: window.location.href');
-                  window.location.href = metamaskUrl;
-                }, 1000);
-                
-                // Method 3: Create and click a link (another fallback)
-                setTimeout(() => {
-                  console.log('BRICS Integration - Fallback 2: programmatic link click');
-                  const link = document.createElement('a');
-                  link.href = metamaskUrl;
-                  link.target = '_blank';
-                  link.click();
-                }, 2000);
-                
-                // Method 4: Try alternative deep link format
-                setTimeout(() => {
-                  console.log('BRICS Integration - Fallback 3: alternative deep link');
-                  const alternativeUrl = `metamask://dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
-                  window.location.href = alternativeUrl;
-                }, 3000);
-                
-              } catch (error) {
-                console.log('BRICS Integration - Redirect failed, trying location.href');
-                window.location.href = metamaskUrl;
+              if (currentChainId !== targetChainId) {
+                console.log('🔧 BRICS Integration - Switching to target chain:', targetChainId);
+                const success = await switchToChain(targetChainId);
+                if (!success) {
+                  console.error('🔧 BRICS Integration - Failed to switch chain');
+                  setError(`Please switch to ${getChainName(targetChainId)} network to continue`);
+                  return;
+                }
               }
               
-              // Simple redirect without UI changes
-              console.log('BRICS Integration - Redirecting to MetaMask app');
-              window.location.href = metamaskUrl;
-              
-              return;
+              console.log('🔧 BRICS Integration - Executing deposit');
+              await handleDeposit();
             } else {
-              console.log('BRICS Integration - Not mobile or already in MetaMask, using connectWallet');
-              await connectWallet();
+              console.log('🔧 BRICS Integration - Wallet not connected, attempting to connect');
+              
+              // Set target chain for connection
+              setSelectedChain(targetChainId);
+              
+              // Use the same mobile redirect logic as connectWallet
+              const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS|FxiOS/i.test(navigator.userAgent) || 
+                                    (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
+                                    /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.platform);
+              const isMetaMaskBrowser = /MetaMaskMobile/.test(navigator.userAgent);
+              
+              console.log('🔧 BRICS Integration - Mobile detection:', { 
+                isMobileDevice, 
+                isMetaMaskBrowser, 
+                isEmbedded,
+                userAgent: navigator.userAgent,
+                maxTouchPoints: navigator.maxTouchPoints,
+                platform: navigator.platform
+              });
+              
+              if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
+                console.log('🔧 BRICS Integration - Mobile device detected, redirecting to MetaMask app');
+                localStorage.setItem('walletConnectionAttempt', 'true');
+                const vercelAppUrl = 'https://buy.brics.ninja';
+                const metamaskUrl = `https://metamask.app.link/dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
+                console.log('🔧 BRICS Integration - Opening MetaMask app URL:', metamaskUrl);
+                
+                // Try multiple redirect methods for better mobile compatibility
+                try {
+                  console.log('🔧 BRICS Integration - Attempting MetaMask deep link:', metamaskUrl);
+                  
+                  // Method 1: Direct window.open
+                  window.open(metamaskUrl, '_blank');
+                  
+                  // Method 2: Set location after a delay (fallback)
+                  setTimeout(() => {
+                    console.log('🔧 BRICS Integration - Fallback 1: window.location.href');
+                    window.location.href = metamaskUrl;
+                  }, 1000);
+                  
+                  // Method 3: Create and click a link (another fallback)
+                  setTimeout(() => {
+                    console.log('🔧 BRICS Integration - Fallback 2: programmatic link click');
+                    const link = document.createElement('a');
+                    link.href = metamaskUrl;
+                    link.target = '_blank';
+                    link.click();
+                  }, 2000);
+                  
+                  // Method 4: Try alternative deep link format
+                  setTimeout(() => {
+                    console.log('🔧 BRICS Integration - Fallback 3: alternative deep link');
+                    const alternativeUrl = `metamask://dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
+                    window.location.href = alternativeUrl;
+                  }, 3000);
+                  
+                } catch (error) {
+                  console.log('🔧 BRICS Integration - Redirect failed, trying location.href');
+                  window.location.href = metamaskUrl;
+                }
+                
+                // Simple redirect without UI changes
+                console.log('🔧 BRICS Integration - Redirecting to MetaMask app');
+                window.location.href = metamaskUrl;
+                
+                return;
+              } else {
+                console.log('🔧 BRICS Integration - Not mobile or already in MetaMask, using connectWallet');
+                await connectWallet();
+                
+                // After connection, check if we need to switch chains
+                setTimeout(async () => {
+                  if (provider) {
+                    const network = await provider.getNetwork();
+                    const currentChainId = Number(network.chainId);
+                    
+                    if (currentChainId !== targetChainId) {
+                      console.log('🔧 BRICS Integration - Switching to target chain after connection:', targetChainId);
+                      const success = await switchToChain(targetChainId);
+                      if (success) {
+                        console.log('🔧 BRICS Integration - Chain switched, executing deposit');
+                        await handleDeposit();
+                      }
+                    } else {
+                      console.log('🔧 BRICS Integration - Already on correct chain, executing deposit');
+                      await handleDeposit();
+                    }
+                  }
+                }, 1000);
+              }
             }
+          } catch (error) {
+            console.error('🔧 BRICS Integration - Auto-connect error:', error);
+            setError('Failed to auto-connect wallet: ' + error.message);
           }
         }, 2000);
       } else {
@@ -1235,6 +1295,17 @@ const handleDeposit = async () => {
 
     setSnackbarMessage('🔧 Sending USDT to treasury...');
     
+    // 🔧 FIX 2: Validate chain support before sending
+    try {
+      const treasuryAddress = getTreasuryAddressForChain(selectedChain);
+      console.log('🔧 Using treasury address:', treasuryAddress, 'for chain:', selectedChain);
+    } catch (chainError) {
+      setError(`Unsupported network: ${getChainName(selectedChain)}. Please switch to a supported network.`);
+      setIsProcessing(false);
+      setShowSnackbar(false);
+      return;
+    }
+    
     // 🔧 FIX 7: Use the new handleSendUSDTToTreasury function
     const depositTx = await handleSendUSDTToTreasury(amount, selectedChain);
     console.log('🔧 Deposit transaction to treasury:', depositTx.hash);
@@ -1273,10 +1344,20 @@ const handleDeposit = async () => {
       // Don't fail the entire operation if API recording fails
     }
 
-    // 🔧 FIX 9: Success message with transaction hash
+    // 🔧 FIX 3: Enhanced success feedback
     setShowSnackbar(true);
     setSnackbarMessage(`✅ Deposit successful! TX: ${depositTx.hash.substring(0, 10)}...`);
-    setTimeout(() => setShowSnackbar(false), 5000);
+    setTimeout(() => setShowSnackbar(false), 8000);
+    
+    // Show detailed success message
+    console.log('🔧 Deposit completed successfully:', {
+      amount: amount,
+      chainId: selectedChain,
+      chainName: getChainName(selectedChain),
+      treasuryAddress: getTreasuryAddressForChain(selectedChain),
+      transactionHash: depositTx.hash,
+      userAddress: account
+    });
 
     // Refresh balances
     const freshProvider = new ethers.BrowserProvider(window.ethereum);
@@ -1613,6 +1694,7 @@ const handleCopy = (text) => {
     const amount = params.get('amount');
     const user = params.get('user');
     const hash = params.get('hash');
+    const chain = params.get('chain'); // 🔧 FIX 1: Add chain parameter support
     const hasBRICSParams = action === 'connect_wallet' && amount && user && hash;
     
     return (

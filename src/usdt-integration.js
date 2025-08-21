@@ -42,13 +42,13 @@ const RPC_ENDPOINTS = {
 };
 
 
-// Add a new object for treasury addresses on different chains
+// 🔧 FIX 2: Treasury addresses with environment variable support
 export const TREASURY_ADDRESSES = {
-  1: '0xe4f1c79c47fa2de285cd8fb6f6476495bd08538f',    // Ethereum Mainnet
-  8453: '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Base
-  10: '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0',   // Optimism
-  42161: '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Arbitrum
-  11155111: '0xe4f1C79c47FA2dE285Cd8Fb6F6476495BD08538f', // Sepolia treasury
+  1: process.env.TREASURY_ETHEREUM || '0xe4f1c79c47fa2de285cd8fb6f6476495bd08538f',    // Ethereum Mainnet
+  8453: process.env.TREASURY_BASE || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Base
+  10: process.env.TREASURY_OPTIMISM || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0',   // Optimism
+  42161: process.env.TREASURY_ARBITRUM || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Arbitrum
+  11155111: process.env.TREASURY_SEPOLIA || '0xe4f1C79c47FA2dE285Cd8Fb6F6476495BD08538f', // Sepolia treasury
 };
 
 // Add local storage keys for deposit tracking
@@ -65,7 +65,23 @@ export const getChainProvider = async (chainId) => {
 
 
 export const getTreasuryAddressForChain = (chainId) => {
-  return TREASURY_ADDRESSES[chainId] || TREASURY_ADDRESSES[1]; // Default to Ethereum
+  console.log('🔧 Getting treasury address for chain:', chainId);
+  console.log('🔧 Available treasury addresses:', TREASURY_ADDRESSES);
+  
+  const treasuryAddress = TREASURY_ADDRESSES[chainId];
+  
+  if (!treasuryAddress) {
+    console.warn(`🔧 No treasury address found for chain ${chainId}, falling back to Ethereum`);
+    const fallbackAddress = TREASURY_ADDRESSES[1];
+    if (!fallbackAddress) {
+      console.error('🔧 No fallback treasury address available!');
+      throw new Error(`Unsupported chain ID: ${chainId}. Please use a supported network.`);
+    }
+    return fallbackAddress;
+  }
+  
+  console.log('🔧 Treasury address for chain', chainId, ':', treasuryAddress);
+  return treasuryAddress;
 };
 
 
@@ -74,6 +90,30 @@ export const API_BASE_URL = window.location.hostname === 'localhost'
   : 'https://buybrics.vercel.app';
 
 console.log('API_BASE_URL:', API_BASE_URL);
+
+// 🔧 FIX 2: Validate treasury environment variables
+export const validateTreasuryEnvironment = () => {
+  const requiredVars = [
+    'TREASURY_ETHEREUM',
+    'TREASURY_BASE', 
+    'TREASURY_OPTIMISM',
+    'TREASURY_ARBITRUM'
+  ];
+  
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.warn('🔧 Missing treasury environment variables:', missingVars);
+    console.warn('🔧 Using fallback addresses');
+    return false;
+  }
+  
+  console.log('🔧 All treasury environment variables are set');
+  return true;
+};
+
+// Validate on module load
+validateTreasuryEnvironment();
 
 // USDT Contract ABI (Simplified version with only the functions we need)
 export const USDT_ABI = [
