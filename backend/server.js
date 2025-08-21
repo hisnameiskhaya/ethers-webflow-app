@@ -57,21 +57,26 @@ console.log('Environment Variables:', {
   GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID ? 'Set' : 'Not set',
 });
 
-const MONGODB_URI = process.env.MONGODB_URI;
+// 🔧 FIX 4: Improved MongoDB URI handling with fallbacks
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.DATABASE_URL;
+
 if (!MONGODB_URI) {
-  console.error('MONGODB_URI is not defined. Please set it in environment variables.');
+  console.error('🔧 MONGODB_URI is not defined. Please set it in environment variables.');
+  console.error('🔧 Expected environment variables: MONGODB_URI, MONGODB_URL, or DATABASE_URL');
   process.exit(1);
 }
 
-console.log('Connecting to MongoDB with URI:', MONGODB_URI.replace(/:([^@]+)@/, ':****@'));
+console.log('🔧 Connecting to MongoDB with URI:', MONGODB_URI.replace(/:([^@]+)@/, ':****@'));
+console.log('🔧 MongoDB URI length:', MONGODB_URI.length);
 
 let mongooseConnection = null;
 async function connectToMongoDB() {
   if (mongooseConnection) {
-    console.log('Reusing existing MongoDB connection');
+    console.log('🔧 Reusing existing MongoDB connection');
     return mongooseConnection;
   }
   try {
+    console.log('🔧 Attempting MongoDB connection...');
     mongooseConnection = await mongoose.connect(MONGODB_URI, {
       ssl: true,
       retryWrites: true,
@@ -81,17 +86,18 @@ async function connectToMongoDB() {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 20000,
     });
-    console.log('MongoDB connected successfully');
-    console.log('Database Name:', mongooseConnection.connection.db.databaseName);
-    console.log('Collections:', await mongooseConnection.connection.db.listCollections().toArray());
+    console.log('🔧 MongoDB connected successfully');
+    console.log('🔧 Database Name:', mongooseConnection.connection.db.databaseName);
+    console.log('🔧 Collections:', await mongooseConnection.connection.db.listCollections().toArray());
     return mongooseConnection;
   } catch (err) {
-    console.error('MongoDB connection error:', {
+    console.error('🔧 MongoDB connection error:', {
       message: err.message,
       code: err.code,
       name: err.name,
       stack: err.stack,
     });
+    console.error('🔧 MongoDB connection failed - exiting process');
     process.exit(1);
   }
 }
@@ -341,8 +347,12 @@ app.get('/api/deposits/tx/:txHash', async (req, res) => {
 
 app.post('/api/deposits', async (req, res) => {
   try {
+    console.log('🔧 /api/deposits endpoint hit');
+    console.log('🔧 Request headers:', req.headers);
+    console.log('🔧 Request body:', req.body);
+    
     const { userAddress, amount, txHash, chainId, yieldGoalMet } = req.body;
-    console.log(`Saving deposit with payload:`, { userAddress, amount, txHash, chainId, yieldGoalMet });
+    console.log(`🔧 Saving deposit with payload:`, { userAddress, amount, txHash, chainId, yieldGoalMet });
 
     const errors = [];
     if (!userAddress || typeof userAddress !== 'string') errors.push('userAddress is missing or invalid');
@@ -351,7 +361,7 @@ app.post('/api/deposits', async (req, res) => {
     if (!chainId || typeof chainId !== 'number') errors.push('chainId is missing or not a number');
 
     if (errors.length > 0) {
-      console.error('Validation errors:', errors);
+      console.error('🔧 Validation errors:', errors);
       return res.status(400).json({ success: false, error: 'Validation failed', details: errors });
     }
 
@@ -394,16 +404,27 @@ app.post('/api/deposits', async (req, res) => {
       isTestData: false,
     });
 
+    console.log('🔧 Attempting to save deposit to MongoDB...');
+    console.log('🔧 Deposit object:', deposit);
+    
     let saveAttempts = 0;
     const maxAttempts = 3;
     while (saveAttempts < maxAttempts) {
       try {
+        console.log(`🔧 Save attempt ${saveAttempts + 1}/${maxAttempts}`);
         await deposit.save();
+        console.log('🔧 Deposit saved successfully to MongoDB');
+        
         await Deposit.updateMany(
           { userAddress: normalizedUserAddress, chainId: parsedChainId, txHash: { $ne: normalizedTxHash } },
           { $set: { currentBalance: newTotalBalance } }
         );
+        console.log('🔧 Updated existing deposits with new balance');
+        
         await triggerSheetSync();
+        console.log('🔧 Triggered Google Sheets sync');
+        
+        console.log('🔧 Returning success response');
         return res.json({
           success: true,
           deposit,
@@ -411,16 +432,21 @@ app.post('/api/deposits', async (req, res) => {
           totalMockUsdtDeposited: 0, // Update with actual logic if needed
         });
       } catch (saveError) {
-        console.error(`MongoDB save error (attempt ${saveAttempts + 1}):`, saveError);
+        console.error(`🔧 MongoDB save error (attempt ${saveAttempts + 1}):`, saveError);
         if (saveError.code === 11000) {
+          console.log('🔧 Duplicate key error, checking if deposit already exists...');
           const doubleCheck = await Deposit.findOne({ txHash: normalizedTxHash }).lean().maxTimeMS(15000);
-          if (doubleCheck) return res.status(400).json({ success: false, error: 'Duplicate transaction hash', txHash: normalizedTxHash });
+          if (doubleCheck) {
+            console.log('🔧 Deposit already exists, returning duplicate error');
+            return res.status(400).json({ success: false, error: 'Duplicate transaction hash', txHash: normalizedTxHash });
+          }
           saveAttempts++;
           continue;
         }
         throw saveError;
       }
     }
+    console.error('🔧 Failed to save deposit after all retries');
     return res.status(500).json({ success: false, error: 'Failed to save deposit after retries' });
   } catch (error) {
     console.error('Error saving deposit:', error);

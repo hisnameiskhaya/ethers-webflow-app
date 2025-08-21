@@ -69,9 +69,26 @@ export const getTreasuryAddressForChain = (chainId) => {
 };
 
 
-export const API_BASE_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:4000'
-  : 'https://buybrics.vercel.app';
+// 🔧 FIX 6: Improved API_BASE_URL logic for staging/production
+export const API_BASE_URL = (() => {
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  
+  console.log('🔧 API_BASE_URL - Hostname:', hostname, 'Protocol:', protocol);
+  
+  if (hostname === 'localhost') {
+    return 'http://localhost:4000';
+  }
+  
+  // Check for staging environment
+  if (hostname.includes('staging') || hostname.includes('preview') || hostname.includes('vercel.app')) {
+    // For Vercel preview deployments, use the same domain
+    return `${protocol}//${hostname}`;
+  }
+  
+  // Production fallback
+  return 'https://buybrics.vercel.app';
+})();
 
 console.log('API_BASE_URL:', API_BASE_URL);
 

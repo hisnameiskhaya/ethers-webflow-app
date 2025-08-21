@@ -1246,13 +1246,10 @@ const handleDeposit = async () => {
       chainId: selectedChain,
     };
 
-    const depositResponse = await fetch(`${API_BASE_URL}/api/deposits`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(depositPayload),
-    });
+    console.log('🔧 Sending deposit to backend:', depositPayload);
 
-    // 🔧 FIX 8: Better error handling for API calls
+    // 🔧 FIX 1: Single API call with proper error handling
+    let depositRecorded = false;
     try {
       const depositResponse = await fetch(`${API_BASE_URL}/api/deposits`, {
         method: 'POST',
@@ -1260,17 +1257,29 @@ const handleDeposit = async () => {
         body: JSON.stringify(depositPayload),
       });
 
+      console.log('🔧 Backend response status:', depositResponse.status);
+
       if (!depositResponse.ok) {
-        throw new Error(`API error: ${depositResponse.status}`);
+        const errorText = await depositResponse.text();
+        throw new Error(`API error: ${depositResponse.status} - ${errorText}`);
       }
 
       const depositData = await depositResponse.json();
+      console.log('🔧 Backend response data:', depositData);
+
       if (!depositData.success) {
-        throw new Error('Failed to record deposit in backend');
+        throw new Error(`Backend error: ${depositData.error || 'Unknown error'}`);
       }
+
+      depositRecorded = true;
+      console.log('🔧 Deposit successfully recorded in backend');
     } catch (apiError) {
-      console.warn('🔧 API recording failed, but transaction was successful:', apiError);
-      // Don't fail the entire operation if API recording fails
+      console.error('🔧 API recording failed:', apiError);
+      // Show error modal instead of silent failure
+      setError(`Transaction successful but backend recording failed: ${apiError.message}`);
+      setShowSnackbar(true);
+      setSnackbarMessage('⚠️ Transaction completed but not recorded in system');
+      setTimeout(() => setShowSnackbar(false), 5000);
     }
 
     // 🔧 FIX 9: Success message with transaction hash
