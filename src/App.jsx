@@ -43,6 +43,9 @@ import './debug-ethereum-deposit.js';
 // Import test script for Ethereum flow validation
 import './test-ethereum-flow.js';
 
+// Import USDT flow debug script
+import './debug-usdt-flow.js';
+
 import { 
   logContractError, 
   monitorProviderStatus, 
