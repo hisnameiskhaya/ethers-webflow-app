@@ -1,14 +1,11 @@
-// src/usdt-integration.js
-import { ethers } from 'ethers';
-import { JsonRpcProvider } from 'ethers';
+import { ethers } from "ethers";
 
-// USDT Contract Addresses for different chains
-const CONTRACT_ADDRESSES = {
-  1: '0xdAC17F958D2ee523a2206206994597C13D831ec7',   // Ethereum Mainnet (correct checksum)
-  8453: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',  // Base Chain (correct address)
-  10: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58',   // Optimism
-  42161: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', // Arbitrum
-  11155111: '0x638F9132EA2737Fa15b200627516FCe77bE6CE53', // Sepolia MockUSDT
+const treasuryAddresses = {
+  1: "0xe4f1c79c47fa2de285cd8fb6f6476495bd08538f", // Ethereum Mainnet
+  8453: "0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0", // Base
+  10: "0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0", // Optimism
+  42161: "0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0", // Arbitrum
+  11155111: "0xe4f1C79c47FA2dE285Cd8Fb6F6476495BD08538f", // Sepolia
 };
 
 // Deposit contract deployed address
@@ -139,53 +136,39 @@ export const validateTreasuryEnvironment = () => {
 // Validate on module load
 validateTreasuryEnvironment();
 
-// USDT Contract ABI (Simplified version with only the essential functions)
-export const USDT_ABI = [
-  {
-    "constant": true,
-    "inputs": [{"name": "_owner", "type": "address"}],
-    "name": "balanceOf",
-    "outputs": [{"name": "balance", "type": "uint256"}],
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "decimals",
-    "outputs": [{"name": "", "type": "uint8"}],
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {"name": "_owner", "type": "address"},
-      {"name": "_spender", "type": "address"}
-    ],
-    "name": "allowance",
-    "outputs": [{"name": "remaining", "type": "uint256"}],
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {"name": "_spender", "type": "address"},
-      {"name": "_value", "type": "uint256"}
-    ],
-    "name": "approve",
-    "outputs": [{"name": "success", "type": "bool"}],
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {"name": "_to", "type": "address"},
-      {"name": "_value", "type": "uint256"}
-    ],
-    "name": "transfer",
-    "outputs": [{"name": "success", "type": "bool"}],
-    "type": "function"
-  }
+const USDT_ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function transfer(address to, uint256 amount) external returns (bool)",
+  "function balanceOf(address account) external view returns (uint256)",
+  "function decimals() view returns (uint8)",
 ];
+
+const USDT_ADDRESSES = {
+  1: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // Mainnet
+  8453: "0x4200000000000000000000000000000000000006", // Base (placeholder)
+  10: "0x4200000000000000000000000000000000000006", // Optimism (placeholder)
+  42161: "0x4200000000000000000000000000000000000006", // Arbitrum (placeholder)
+  11155111: "0x0000000000000000000000000000000000000000", // Sepolia (fill if needed)
+};
+
+// ✅ Updated: Use Ankr public RPC for Ethereum Mainnet
+const getProvider = (chainId) => {
+  switch (chainId) {
+    case 1:
+      return new ethers.JsonRpcProvider("https://rpc.ankr.com/eth");
+    case 8453:
+      return new ethers.JsonRpcProvider("https://mainnet.base.org");
+    case 10:
+      return new ethers.JsonRpcProvider("https://mainnet.optimism.io");
+    case 42161:
+      return new ethers.JsonRpcProvider("https://arb1.arbitrum.io/rpc");
+    case 11155111:
+      return new ethers.JsonRpcProvider("https://rpc.sepolia.org");
+    default:
+      throw new Error("Unsupported network");
+  }
+};
 
 export const DEPOSIT_CONTRACT_ABI = [
   {
@@ -271,7 +254,7 @@ export const getUSDTAddress = async (provider) => {
     const cacheKey = provider?.constructor?.name || 'default';
     if (chainIdCache[cacheKey]) {
       const chainId = chainIdCache[cacheKey];
-      const usdtAddress = CONTRACT_ADDRESSES[chainId] || CONTRACT_ADDRESSES[1];
+      const usdtAddress = USDT_ADDRESSES[chainId] || USDT_ADDRESSES[1];
       return usdtAddress;
     }
 
@@ -279,11 +262,11 @@ export const getUSDTAddress = async (provider) => {
     const chainId = Number(network.chainId);
     chainIdCache[cacheKey] = chainId;
 
-    const usdtAddress = CONTRACT_ADDRESSES[chainId] || CONTRACT_ADDRESSES[1];
+    const usdtAddress = USDT_ADDRESSES[chainId] || USDT_ADDRESSES[1];
     return usdtAddress;
   } catch (error) {
     console.error("Error getting chain ID:", error);
-    return CONTRACT_ADDRESSES[1]; // Default to Ethereum
+    return USDT_ADDRESSES[1]; // Default to Ethereum
   }
 };
 
@@ -335,7 +318,7 @@ export const getUSDTContract = async (ethProvider, chainId) => {
       resolvedChainId = Number(network.chainId);
     }
 
-    const usdtAddress = CONTRACT_ADDRESSES[resolvedChainId] || CONTRACT_ADDRESSES[1];
+    const usdtAddress = USDT_ADDRESSES[resolvedChainId] || USDT_ADDRESSES[1];
     if (!usdtAddress) {
       throw new Error(`No USDT contract address for chain ${resolvedChainId}`);
     }
@@ -416,13 +399,13 @@ export const getMultiChainUSDTBalance = async (userAddress) => {
   if (!userAddress) return {};
   
   const balances = {};
-  const chainIds = Object.keys(CONTRACT_ADDRESSES).map(id => Number(id));
+  const chainIds = Object.keys(USDT_ADDRESSES).map(id => Number(id));
   
   // Fetch balances for each chain in parallel
   await Promise.all(chainIds.map(async (chainId) => {
     try {
-      const provider = getChainProvider(chainId);
-      const usdtAddress = CONTRACT_ADDRESSES[chainId];
+      const provider = getProvider(chainId);
+      const usdtAddress = USDT_ADDRESSES[chainId];
       
       // Skip if no contract address for this chain
       if (!usdtAddress) return;
@@ -451,7 +434,7 @@ export const getTotalUSDTBalance = async (userAddress) => {
 };
 
 export const getUSDTContractForChain = (chainId, signerOrProvider) => {
-  const usdtAddress = CONTRACT_ADDRESSES[chainId];
+  const usdtAddress = USDT_ADDRESSES[chainId];
   if (!usdtAddress) throw new Error(`No USDT contract for chain ${chainId}`);
   return new ethers.Contract(usdtAddress, USDT_ABI, signerOrProvider);
 };
@@ -855,5 +838,12 @@ export const testBRICSFlow = () => {
     chainMap,
     urlParams: testParams
   };
+};
+
+export {
+  treasuryAddresses,
+  USDT_ABI,
+  USDT_ADDRESSES,
+  getProvider,
 };
 
