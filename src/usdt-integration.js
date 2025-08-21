@@ -94,12 +94,22 @@ export const API_BASE_URL = (() => {
     return 'http://localhost:4000';
   }
   
-  // Vercel preview deployments (staging)
-  if (hostname.includes('vercel.app') && hostname.includes('git-')) {
+  // Vercel preview deployments (staging) - more specific check
+  if (hostname.includes('buybrics-git-staging-fixes-hisnameiskhayas-projects.vercel.app')) {
     return `https://${hostname}`;
   }
   
   // Production
+  if (hostname === 'buybrics.vercel.app') {
+    return 'https://buybrics.vercel.app';
+  }
+  
+  // Fallback for other Vercel previews
+  if (hostname.includes('vercel.app')) {
+    return `https://${hostname}`;
+  }
+  
+  // Default fallback
   return 'https://buybrics.vercel.app';
 })();
 
