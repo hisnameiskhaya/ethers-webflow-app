@@ -9,6 +9,211 @@ import { syncDepositsToSheet, syncWithdrawalsToSheet, updateYieldFromSheet, upda
 import cron from 'node-cron';
 import { google } from 'googleapis'; // Added
 
+// 🔧 FIX: Robust polling utility for handling stale filters
+class RobustEventPoller {
+  constructor(provider, options = {}) {
+    this.provider = provider;
+    this.pollInterval = options.pollInterval || 5000; // 5 seconds
+    this.maxRetries = options.maxRetries || 3;
+    this.filterId = null;
+    this.isPolling = false;
+    this.retryCount = 0;
+    this.onEvent = options.onEvent || (() => {});
+    this.onError = options.onError || (() => {});
+  }
+
+  async createFilter(filterParams) {
+    try {
+      console.log('🔧 Creating new event filter:', filterParams);
+      this.filterId = await this.provider.send('eth_newFilter', [filterParams]);
+      console.log('🔧 Filter created successfully, ID:', this.filterId);
+      this.retryCount = 0;
+      return this.filterId;
+    } catch (error) {
+      console.error('🔧 Failed to create filter:', error);
+      throw error;
+    }
+  }
+
+  async getFilterChanges() {
+    if (!this.filterId) {
+      throw new Error('No filter ID available');
+    }
+
+    try {
+      console.log('🔧 Polling filter changes for ID:', this.filterId);
+      const changes = await this.provider.send('eth_getFilterChanges', [this.filterId]);
+      console.log('🔧 Filter changes received:', changes.length, 'events');
+      return changes;
+    } catch (error) {
+      console.error('🔧 Filter polling error:', error);
+      
+      // Check if it's a stale filter error
+      if (error.code === -32001 || error.message.includes('resource not found')) {
+        console.log('🔧 Stale filter detected, recreating...');
+        this.filterId = null;
+        throw new Error('STALE_FILTER');
+      }
+      
+      throw error;
+    }
+  }
+
+  async startPolling(filterParams) {
+    if (this.isPolling) {
+      console.log('🔧 Polling already in progress');
+      return;
+    }
+
+    this.isPolling = true;
+    console.log('🔧 Starting robust event polling');
+
+    try {
+      // Create initial filter
+      await this.createFilter(filterParams);
+    } catch (error) {
+      console.error('🔧 Failed to create initial filter:', error);
+      this.isPolling = false;
+      this.onError(error);
+      return;
+    }
+
+    const poll = async () => {
+      if (!this.isPolling) return;
+
+      try {
+        const changes = await this.getFilterChanges();
+        
+        // Process events
+        for (const event of changes) {
+          this.onEvent(event);
+        }
+
+        // Reset retry count on success
+        this.retryCount = 0;
+
+      } catch (error) {
+        if (error.message === 'STALE_FILTER') {
+          // Recreate filter and continue polling
+          try {
+            await this.createFilter(filterParams);
+            console.log('🔧 Filter recreated, continuing polling');
+          } catch (recreateError) {
+            console.error('🔧 Failed to recreate filter:', recreateError);
+            this.retryCount++;
+            
+            if (this.retryCount >= this.maxRetries) {
+              console.error('🔧 Max retries reached, stopping polling');
+              this.stopPolling();
+              this.onError(recreateError);
+              return;
+            }
+          }
+        } else {
+          console.error('🔧 Polling error:', error);
+          this.retryCount++;
+          
+          if (this.retryCount >= this.maxRetries) {
+            console.error('🔧 Max retries reached, stopping polling');
+            this.stopPolling();
+            this.onError(error);
+            return;
+          }
+        }
+      }
+
+      // Schedule next poll
+      if (this.isPolling) {
+        setTimeout(poll, this.pollInterval);
+      }
+    };
+
+    // Start polling
+    poll();
+  }
+
+  stopPolling() {
+    console.log('🔧 Stopping event polling');
+    this.isPolling = false;
+    this.filterId = null;
+    this.retryCount = 0;
+  }
+
+  async cleanup() {
+    this.stopPolling();
+    
+    if (this.filterId) {
+      try {
+        await this.provider.send('eth_uninstallFilter', [this.filterId]);
+        console.log('🔧 Filter uninstalled:', this.filterId);
+      } catch (error) {
+        console.warn('🔧 Failed to uninstall filter:', error);
+      }
+      this.filterId = null;
+    }
+  }
+}
+
+// Export the polling utility
+export { RobustEventPoller };
+
+// 🔧 FIX: Safe filter polling wrapper for existing code
+export const safeFilterPolling = async (provider, filterParams, onEvent, onError) => {
+  const poller = new RobustEventPoller(provider, {
+    onEvent,
+    onError,
+    pollInterval: 5000,
+    maxRetries: 3
+  });
+
+  try {
+    await poller.startPolling(filterParams);
+    
+    // Track poller for cleanup
+    activePollers.add(poller);
+    
+    // Remove from tracking when polling stops
+    const originalStopPolling = poller.stopPolling.bind(poller);
+    poller.stopPolling = () => {
+      originalStopPolling();
+      activePollers.delete(poller);
+    };
+    
+    return poller;
+  } catch (error) {
+    console.error('🔧 Failed to start safe filter polling:', error);
+    throw error;
+  }
+};
+
+// 🔧 FIX: Utility to check if a filter is stale and recreate it
+export const handleStaleFilter = async (provider, filterId, filterParams) => {
+  try {
+    // Try to get changes from the filter
+    const changes = await provider.send('eth_getFilterChanges', [filterId]);
+    return { success: true, changes };
+  } catch (error) {
+    if (error.code === -32001 || error.message.includes('resource not found')) {
+      console.log('🔧 Stale filter detected, recreating...');
+      
+      // Uninstall the old filter
+      try {
+        await provider.send('eth_uninstallFilter', [filterId]);
+      } catch (uninstallError) {
+        console.warn('🔧 Failed to uninstall stale filter:', uninstallError);
+      }
+      
+      // Create a new filter
+      const newFilterId = await provider.send('eth_newFilter', [filterParams]);
+      console.log('🔧 New filter created:', newFilterId);
+      
+      return { success: true, filterId: newFilterId, changes: [] };
+    }
+    
+    throw error;
+  }
+};
+
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
@@ -35,6 +240,79 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const app = express();
+
+// 🔧 FIX: Global poller instances for cleanup
+const activePollers = new Set();
+
+// 🔧 FIX: Graceful shutdown handler
+const gracefulShutdown = async () => {
+  console.log('🔧 Shutting down server gracefully...');
+  
+  // Clean up all active pollers
+  for (const poller of activePollers) {
+    try {
+      await poller.cleanup();
+    } catch (error) {
+      console.warn('🔧 Error cleaning up poller:', error);
+    }
+  }
+  
+  console.log('🔧 All pollers cleaned up');
+  process.exit(0);
+};
+
+// Register shutdown handlers
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+/*
+🔧 USAGE EXAMPLES for RobustEventPoller:
+
+// Example 1: Poll for USDT Transfer events
+const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, provider);
+const poller = new RobustEventPoller(provider, {
+  onEvent: (event) => {
+    console.log('USDT Transfer detected:', event);
+    // Handle the event
+  },
+  onError: (error) => {
+    console.error('Polling error:', error);
+  }
+});
+
+await poller.startPolling({
+  address: USDT_ADDRESS,
+  topics: [
+    ethers.id('Transfer(address,address,uint256)')
+  ]
+});
+
+// Example 2: Poll for deposit contract events
+const depositPoller = new RobustEventPoller(provider, {
+  onEvent: (event) => {
+    console.log('Deposit detected:', event);
+    // Process deposit
+  }
+});
+
+await depositPoller.startPolling({
+  address: DEPOSIT_CONTRACT_ADDRESS,
+  topics: [
+    ethers.id('Deposit(address,uint256,uint256)')
+  ]
+});
+
+// Example 3: Using the safe wrapper
+const poller = await safeFilterPolling(
+  provider,
+  { address: CONTRACT_ADDRESS },
+  (event) => console.log('Event:', event),
+  (error) => console.error('Error:', error)
+);
+
+// Clean up when done
+poller.stopPolling();
+*/
 
 app.use('/api/withdraw', rateLimit({
   windowMs: 15 * 60 * 1000,
