@@ -40,6 +40,9 @@ import {
 // Import debug script for Ethereum flow
 import './debug-ethereum-deposit.js';
 
+// Import test script for Ethereum flow validation
+import './test-ethereum-flow.js';
+
 import { 
   logContractError, 
   monitorProviderStatus, 
@@ -1350,8 +1353,8 @@ const handleBackClick = () => {
 };
 
 // 🔧 FIX 4: Add new handleSendUSDTToTreasury function for better error handling
-const handleSendUSDTToTreasury = async (amount, chainId) => {
-  try {
+    const handleSendUSDTToTreasury = async (amount, chainId) => {
+    try {
     console.log('🔧 handleSendUSDTToTreasury called with amount:', amount, 'chainId:', chainId);
     
     if (!window.ethereum) {
@@ -1426,6 +1429,9 @@ const handleSendUSDTToTreasury = async (amount, chainId) => {
     throw error;
   }
 };
+
+// 🔧 FIX: Expose function globally for debugging
+window.handleSendUSDTToTreasury = handleSendUSDTToTreasury;
 
 const handleDeposit = async () => {
   if (!account || !provider) {
