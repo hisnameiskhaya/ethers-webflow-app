@@ -85,9 +85,23 @@ export const getTreasuryAddressForChain = (chainId) => {
 };
 
 
-export const API_BASE_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:4000'
-  : 'https://buybrics.vercel.app';
+// 🔧 FIX: CORS-safe API_BASE_URL for Vercel deployments
+export const API_BASE_URL = (() => {
+  const hostname = window.location.hostname;
+  
+  // Local development
+  if (hostname === 'localhost') {
+    return 'http://localhost:4000';
+  }
+  
+  // Vercel preview deployments (staging)
+  if (hostname.includes('vercel.app') && hostname.includes('git-')) {
+    return `https://${hostname}`;
+  }
+  
+  // Production
+  return 'https://buybrics.vercel.app';
+})();
 
 console.log('API_BASE_URL:', API_BASE_URL);
 

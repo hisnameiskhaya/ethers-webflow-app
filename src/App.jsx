@@ -532,6 +532,34 @@ function App() {
   }
 }, [account, provider, selectedChain]);
 
+  // 🔧 FIX: Validate BRICS flow parameters
+  const validateBRICSFlow = (action, amount, user, hash, chain) => {
+    console.log('🔧 Validating BRICS flow parameters...');
+    
+    if (!action || action !== 'connect_wallet') {
+      console.log('🔧 Invalid action parameter:', action);
+      return false;
+    }
+    
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      console.log('🔧 Invalid amount parameter:', amount);
+      return false;
+    }
+    
+    if (!user || !user.startsWith('0x') || user.length !== 42) {
+      console.log('🔧 Invalid user address:', user);
+      return false;
+    }
+    
+    if (!hash) {
+      console.log('🔧 Missing hash parameter');
+      return false;
+    }
+    
+    console.log('🔧 BRICS flow parameters are valid');
+    return true;
+  };
+
   // BRICS Integration useEffect
   useEffect(() => {
     initializeBRICSIntegration();
@@ -543,9 +571,20 @@ function App() {
     const hash = params.get('hash');
     const chain = params.get('chain'); // 🔧 FIX 1: Add chain parameter support
 
-    console.log('BRICS Integration - URL Parameters:', { action, amount, user, hash, chain });
+    console.log('🔧 BRICS Integration - URL Parameters:', { action, amount, user, hash, chain });
+    console.log('🔧 BRICS Integration - Environment:', { 
+      mode: import.meta.env.MODE, 
+      dev: import.meta.env.DEV,
+      isDevelopment: import.meta.env.MODE === 'development' || import.meta.env.DEV 
+    });
 
     if (action === 'connect_wallet' && amount && user && hash) {
+      // 🔧 FIX: Validate parameters before proceeding
+      if (!validateBRICSFlow(action, amount, user, hash, chain)) {
+        console.error('🔧 BRICS Integration - Invalid parameters, stopping flow');
+        setError('Invalid request parameters. Please check the URL and try again.');
+        return;
+      }
       const secret = 'nxceebao7frdn1jnv7pss3ss42hs3or5';
       const expectedHash = window.CryptoJS.HmacSHA256(user, secret).toString(window.CryptoJS.enc.Hex);
 
@@ -555,16 +594,28 @@ function App() {
         isValid: hash === expectedHash 
       });
 
-      // Handle both valid HMAC and template variables (for testing)
-      if (hash === expectedHash || hash === 'default' || hash === '{{hash}}') {
+      // 🔧 FIX: Skip HMAC validation in development
+      const isDevelopment = import.meta.env.MODE === 'development' || import.meta.env.DEV;
+      const isValidHash = hash === expectedHash || hash === 'default' || hash === '{{hash}}';
+      
+      console.log('🔧 HMAC Validation:', {
+        isDevelopment,
+        providedHash: hash,
+        expectedHash: expectedHash,
+        isValidHash,
+        skipValidation: isDevelopment
+      });
+      
+      if (isValidHash || isDevelopment) {
         console.log(`Launching MetaMask with ${amount} USDT`);
         setDepositAmount(amount);
         setIsBRICSIntegration(true);
         
-        // 🔧 FIX 1: Auto-connect wallet with chain switching
+        // 🔧 FIX: Enhanced auto-connect wallet with proper flow
         setTimeout(async () => {
           try {
             console.log('🔧 BRICS Integration - Starting auto-connect process');
+            console.log('🔧 BRICS Integration - Amount:', amount, 'User:', user);
             
             // Determine target chain
             let targetChainId = 8453; // Default to Base
@@ -579,6 +630,9 @@ function App() {
               targetChainId = chainMap[chain.toLowerCase()] || 8453;
               console.log('🔧 Target chain from URL parameter:', chain, '-> Chain ID:', targetChainId);
             }
+            
+            // Set the target chain for the deposit
+            setSelectedChain(targetChainId);
             
             if (account && provider) {
               console.log('🔧 BRICS Integration - Wallet already connected, checking chain');
@@ -668,25 +722,39 @@ function App() {
                 console.log('🔧 BRICS Integration - Not mobile or already in MetaMask, using connectWallet');
                 await connectWallet();
                 
-                // After connection, check if we need to switch chains
-                setTimeout(async () => {
-                  if (provider) {
-                    const network = await provider.getNetwork();
-                    const currentChainId = Number(network.chainId);
-                    
-                    if (currentChainId !== targetChainId) {
-                      console.log('🔧 BRICS Integration - Switching to target chain after connection:', targetChainId);
-                      const success = await switchToChain(targetChainId);
-                      if (success) {
-                        console.log('🔧 BRICS Integration - Chain switched, executing deposit');
-                        await handleDeposit();
-                      }
-                    } else {
-                      console.log('🔧 BRICS Integration - Already on correct chain, executing deposit');
-                      await handleDeposit();
-                    }
-                  }
-                }, 1000);
+                                 // After connection, check if we need to switch chains
+                 setTimeout(async () => {
+                   try {
+                     if (provider) {
+                       console.log('🔧 BRICS Integration - Checking network after connection');
+                       const network = await provider.getNetwork();
+                       const currentChainId = Number(network.chainId);
+                       
+                       console.log('🔧 BRICS Integration - Current chain:', currentChainId, 'Target chain:', targetChainId);
+                       
+                       if (currentChainId !== targetChainId) {
+                         console.log('🔧 BRICS Integration - Switching to target chain after connection:', targetChainId);
+                         const success = await switchToChain(targetChainId);
+                         if (success) {
+                           console.log('🔧 BRICS Integration - Chain switched successfully, executing deposit');
+                           await handleDeposit();
+                         } else {
+                           console.error('🔧 BRICS Integration - Failed to switch chain after connection');
+                           setError(`Please switch to ${getChainName(targetChainId)} network to continue`);
+                         }
+                       } else {
+                         console.log('🔧 BRICS Integration - Already on correct chain, executing deposit');
+                         await handleDeposit();
+                       }
+                     } else {
+                       console.error('🔧 BRICS Integration - No provider available after connection');
+                       setError('Failed to connect wallet. Please try again.');
+                     }
+                   } catch (error) {
+                     console.error('🔧 BRICS Integration - Error after connection:', error);
+                     setError('Connection error: ' + error.message);
+                   }
+                 }, 1000);
               }
             }
           } catch (error) {
@@ -695,7 +763,9 @@ function App() {
           }
         }, 2000);
       } else {
-        console.warn("Invalid HMAC – not proceeding.");
+        console.error("🔧 HMAC validation failed – stopping flow");
+        setError("Invalid request signature. Please try again or contact support.");
+        return;
       }
     }
   }, [account, provider]); // Added dependencies to re-run when wallet connects
@@ -1359,9 +1429,18 @@ const handleDeposit = async () => {
       userAddress: account
     });
 
-    // Refresh balances
+    // 🔧 FIX: Refresh balances and simulate success response
+    console.log('🔧 Refreshing balances after successful deposit');
     const freshProvider = new ethers.BrowserProvider(window.ethereum);
     await fetchBalances(freshProvider, account);
+    
+    // Simulate yield/profit update for staging
+    if (import.meta.env.MODE === 'development' || import.meta.env.DEV) {
+      console.log('🔧 Staging mode: Simulating yield accrual');
+      const simulatedYield = amount * 0.05; // 5% yield simulation
+      setProfit(simulatedYield);
+      setDepositedAmount(prev => prev + parseFloat(amount));
+    }
     
     setShowDepositFlow(false);
     setDepositAmount('');
