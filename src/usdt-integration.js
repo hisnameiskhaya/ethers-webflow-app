@@ -42,13 +42,13 @@ const RPC_ENDPOINTS = {
 };
 
 
-// 🔧 FIX 2: Treasury addresses with environment variable support
+// 🔧 FIX: Treasury addresses with Vite environment variable support
 export const TREASURY_ADDRESSES = {
-  1: process.env.TREASURY_ETHEREUM || '0xe4f1c79c47fa2de285cd8fb6f6476495bd08538f',    // Ethereum Mainnet
-  8453: process.env.TREASURY_BASE || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Base
-  10: process.env.TREASURY_OPTIMISM || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0',   // Optimism
-  42161: process.env.TREASURY_ARBITRUM || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Arbitrum
-  11155111: process.env.TREASURY_SEPOLIA || '0xe4f1C79c47FA2dE285Cd8Fb6F6476495BD08538f', // Sepolia treasury
+  1: import.meta.env.VITE_TREASURY_ETHEREUM || '0xe4f1c79c47fa2de285cd8fb6f6476495bd08538f',    // Ethereum Mainnet
+  8453: import.meta.env.VITE_TREASURY_BASE || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Base
+  10: import.meta.env.VITE_TREASURY_OPTIMISM || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0',   // Optimism
+  42161: import.meta.env.VITE_TREASURY_ARBITRUM || '0x3FaED7E00BFB7fA8646F0473D1Cc7e4EC4057DE0', // Arbitrum
+  11155111: import.meta.env.VITE_TREASURY_SEPOLIA || '0xe4f1C79c47FA2dE285Cd8Fb6F6476495BD08538f', // Sepolia treasury
 };
 
 // Add local storage keys for deposit tracking
@@ -105,16 +105,16 @@ export const API_BASE_URL = (() => {
 
 console.log('API_BASE_URL:', API_BASE_URL);
 
-// 🔧 FIX 2: Validate treasury environment variables
+// 🔧 FIX: Validate treasury environment variables with Vite
 export const validateTreasuryEnvironment = () => {
   const requiredVars = [
-    'TREASURY_ETHEREUM',
-    'TREASURY_BASE', 
-    'TREASURY_OPTIMISM',
-    'TREASURY_ARBITRUM'
+    'VITE_TREASURY_ETHEREUM',
+    'VITE_TREASURY_BASE', 
+    'VITE_TREASURY_OPTIMISM',
+    'VITE_TREASURY_ARBITRUM'
   ];
   
-  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  const missingVars = requiredVars.filter(varName => !import.meta.env[varName]);
   
   if (missingVars.length > 0) {
     console.warn('🔧 Missing treasury environment variables:', missingVars);

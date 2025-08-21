@@ -117,9 +117,13 @@ const findHighestBalanceChain = (balances) => {
 };
 
 const switchToChain = async (chainId) => {
-  if (!window.ethereum) return false;
+  if (!window.ethereum) {
+    console.error('🔧 switchToChain: MetaMask not detected');
+    return false;
+  }
 
   try {
+    console.log('🔧 switchToChain: Attempting to switch to chain', chainId);
     const hexChainId = `0x${chainId.toString(16)}`;
 
     await window.ethereum.request({
@@ -562,6 +566,14 @@ function App() {
 
   // BRICS Integration useEffect
   useEffect(() => {
+    console.log('🔧 BRICS Integration useEffect triggered');
+    console.log('🔧 Current state:', {
+      account: account?.substring(0, 10) + '...',
+      provider: !!provider,
+      selectedChain,
+      isBRICSIntegration
+    });
+    
     initializeBRICSIntegration();
     
     const params = new URLSearchParams(window.location.search);
@@ -586,7 +598,24 @@ function App() {
         return;
       }
       const secret = 'nxceebao7frdn1jnv7pss3ss42hs3or5';
-      const expectedHash = window.CryptoJS.HmacSHA256(user, secret).toString(window.CryptoJS.enc.Hex);
+      
+      // 🔧 FIX: Add error handling for CryptoJS
+      let expectedHash;
+      try {
+        if (!window.CryptoJS) {
+          throw new Error('CryptoJS not available');
+        }
+        expectedHash = window.CryptoJS.HmacSHA256(user, secret).toString(window.CryptoJS.enc.Hex);
+      } catch (cryptoError) {
+        console.error('🔧 CryptoJS error:', cryptoError);
+        if (isDevelopment) {
+          console.log('🔧 Development mode: Skipping HMAC validation due to CryptoJS error');
+          expectedHash = 'development_bypass';
+        } else {
+          setError('Security validation failed. Please refresh and try again.');
+          return;
+        }
+      }
 
       console.log('BRICS Integration - Hash comparison:', { 
         providedHash: hash, 
@@ -629,12 +658,36 @@ function App() {
               };
               targetChainId = chainMap[chain.toLowerCase()] || 8453;
               console.log('🔧 Target chain from URL parameter:', chain, '-> Chain ID:', targetChainId);
+            } else {
+              console.log('🔧 No chain parameter provided, using default (Base):', targetChainId);
             }
             
             // Set the target chain for the deposit
             setSelectedChain(targetChainId);
             
+            // 🔧 FIX: Check USDT balance before proceeding
             if (account && provider) {
+              try {
+                console.log('🔧 BRICS Integration - Checking USDT balance before deposit');
+                const balance = await getMultiChainUSDTBalanceLocal(account);
+                const targetBalance = balance[targetChainId] || 0;
+                const depositAmount = parseFloat(amount);
+                
+                console.log('🔧 BRICS Integration - Balance check:', {
+                  targetChainId,
+                  targetBalance,
+                  depositAmount,
+                  hasSufficientBalance: targetBalance >= depositAmount
+                });
+                
+                if (targetBalance < depositAmount) {
+                  console.error('🔧 BRICS Integration - Insufficient USDT balance');
+                  setError(`Insufficient USDT balance. You have ${targetBalance} USDT, need ${depositAmount} USDT on ${getChainName(targetChainId)}.`);
+                  return;
+                }
+              } catch (balanceError) {
+                console.warn('🔧 BRICS Integration - Could not check balance, proceeding anyway:', balanceError);
+              }
               console.log('🔧 BRICS Integration - Wallet already connected, checking chain');
               const network = await provider.getNetwork();
               const currentChainId = Number(network.chainId);
