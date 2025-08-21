@@ -342,6 +342,7 @@ const initializeBRICSIntegration = () => {
 
 function App() {
   console.log("✅ Cursor test deploy succeeded!");
+  console.log("🚧 Cursor staging deploy test - BRICS Wallet");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
