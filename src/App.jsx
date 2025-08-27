@@ -1377,7 +1377,24 @@ const handleMaxClick = (type) => {
   const handleImportBRICS = async () => {
     console.log('🪙 User clicked Import BRICS button');
     
+    // Set loading state
+    setIsProcessing(true);
+    setError(null);
+    setShowSnackbar(true);
+    setSnackbarMessage('Adding BRICS token to MetaMask...');
+    
     try {
+      // Check if MetaMask is available
+      if (!window.ethereum) {
+        throw new Error('MetaMask is not installed. Please install MetaMask to import tokens.');
+      }
+
+      // Check if user is connected to MetaMask
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (!accounts || accounts.length === 0) {
+        throw new Error('Please connect your MetaMask wallet first.');
+      }
+
       const result = await window.ethereum.request({
         method: 'wallet_watchAsset',
         params: {
@@ -1392,14 +1409,46 @@ const handleMaxClick = (type) => {
       });
       
       console.log('✅ Import BRICS result:', result);
-      setSnackbarMessage('BRICS token added to MetaMask!');
-      setShowSnackbar(true);
-      setShowImportButton(false); // Hide import button, show deposit button again
+      
+      if (result) {
+        setSnackbarMessage('🎉 BRICS token successfully added to MetaMask!');
+        setShowSnackbar(true);
+        setShowImportButton(false); // Hide import button, show deposit button again
+        
+        // Show success message for longer
+        setTimeout(() => {
+          setSnackbarMessage('You can now view your BRICS balance in MetaMask');
+          setTimeout(() => setShowSnackbar(false), 3000);
+        }, 2000);
+      } else {
+        throw new Error('Token import was cancelled by user');
+      }
       
     } catch (error) {
       console.error('❌ Import BRICS failed:', error);
-      setSnackbarMessage('Failed to add BRICS token. Please try again.');
+      
+      let errorMessage = 'Failed to add BRICS token. Please try again.';
+      
+      // Provide more specific error messages
+      if (error.message.includes('MetaMask is not installed')) {
+        errorMessage = 'MetaMask is not installed. Please install MetaMask to import tokens.';
+      } else if (error.message.includes('connect your MetaMask wallet')) {
+        errorMessage = 'Please connect your MetaMask wallet first.';
+      } else if (error.message.includes('cancelled')) {
+        errorMessage = 'Token import was cancelled. You can try again anytime.';
+      } else if (error.code === 4001) {
+        errorMessage = 'Token import was rejected. You can try again anytime.';
+      } else if (error.code === -32602) {
+        errorMessage = 'Invalid token parameters. Please contact support.';
+      }
+      
+      setSnackbarMessage(errorMessage);
       setShowSnackbar(true);
+      
+      // Keep import button visible so user can try again
+      setShowImportButton(true);
+    } finally {
+      setIsProcessing(false);
     }
   };
   
@@ -1779,10 +1828,25 @@ const handleCopy = (text) => {
           onClick={showImportButton ? handleImportBRICS : handleDepositClick} 
           disabled={isProcessing}
         >
-          {showImportButton ? 'Import' : 'Deposit'}
+          {isProcessing 
+            ? (showImportButton ? 'Adding to MetaMask...' : 'Processing...') 
+            : (showImportButton ? 'Import to MetaMask' : 'Deposit')
+          }
         </button>
             <button className="btn btn-secondary" onClick={handleWithdrawClick} disabled={depositedAmount <= 0 || isProcessing}>Withdraw</button>
           </div>
+          
+          {showImportButton && !isProcessing && (
+            <div style={{ 
+              textAlign: 'center', 
+              fontSize: '12px', 
+              color: '#666', 
+              marginTop: '8px',
+              fontStyle: 'italic'
+            }}>
+              💡 Add BRICS token to your MetaMask wallet for easy tracking
+            </div>
+          )}
           
 
         </div>
