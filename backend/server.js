@@ -2056,6 +2056,124 @@ app.post('/api/cleanup-fake-deposits', async (req, res) => {
   }
 });
 
+// Fix deposits to match BRICS balance endpoint
+app.post('/api/fix-deposits', async (req, res) => {
+  try {
+    const { userAddress, targetBalance = 0.01 } = req.body;
+    
+    if (!userAddress) {
+      return res.status(400).json({ success: false, message: 'userAddress is required' });
+    }
+
+    console.log(`🔧 Fixing deposits for address: ${userAddress} to match balance: ${targetBalance}`);
+
+    // Get all deposits for this address
+    const deposits = await Deposit.find({ 
+      userAddress: userAddress.toLowerCase() 
+    }).sort({ date: 1 });
+    
+    console.log(`📊 Found ${deposits.length} total deposits`);
+    
+    if (deposits.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No deposits found for this address' 
+      });
+    }
+    
+    // Find active deposits (currentBalance > 0)
+    const activeDeposits = deposits.filter(d => d.currentBalance > 0);
+    console.log(`💰 Active deposits (not redeemed): ${activeDeposits.length}`);
+    
+    if (activeDeposits.length === 0) {
+      return res.status(200).json({ 
+        success: true, 
+        message: 'All deposits are already redeemed (currentBalance = 0)',
+        data: {
+          totalDeposits: deposits.length,
+          activeDeposits: 0,
+          targetBalance,
+          changes: []
+        }
+      });
+    }
+    
+    // Calculate current total
+    const currentTotal = activeDeposits.reduce((sum, d) => sum + d.currentBalance, 0);
+    console.log(`💰 Current active balance: ${currentTotal} USDT`);
+    console.log(`🎯 Target balance: ${targetBalance} USDT`);
+    
+    if (Math.abs(currentTotal - targetBalance) < 0.001) {
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Balances are already in sync!',
+        data: {
+          currentTotal,
+          targetBalance,
+          difference: 0,
+          changes: []
+        }
+      });
+    }
+    
+    // Apply the fix: set first deposit to target balance, others to 0
+    const changes = [];
+    
+    for (let i = 0; i < activeDeposits.length; i++) {
+      const deposit = activeDeposits[i];
+      const oldBalance = deposit.currentBalance;
+      const newBalance = i === 0 ? targetBalance : 0;
+      
+      if (Math.abs(oldBalance - newBalance) > 0.001) {
+        deposit.currentBalance = newBalance;
+        deposit.accumulatedYield = 0; // Reset yield
+        await deposit.save();
+        
+        changes.push({
+          depositId: deposit._id,
+          oldBalance,
+          newBalance,
+          txHash: deposit.txHash
+        });
+        
+        console.log(`✅ Updated deposit ${i + 1}: ${oldBalance} → ${newBalance} USDT`);
+      }
+    }
+    
+    // Verify the fix
+    const updatedDeposits = await Deposit.find({ 
+      userAddress: userAddress.toLowerCase() 
+    });
+    
+    const updatedActiveDeposits = updatedDeposits.filter(d => d.currentBalance > 0);
+    const newTotal = updatedActiveDeposits.reduce((sum, d) => sum + d.currentBalance, 0);
+    const difference = Math.abs(newTotal - targetBalance);
+    
+    console.log(`✅ Fix complete: ${newTotal} USDT vs ${targetBalance} USDT (diff: ${difference})`);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Deposits fixed successfully',
+      data: {
+        oldTotal: currentTotal,
+        newTotal,
+        targetBalance,
+        difference,
+        depositsUpdated: changes.length,
+        changes
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fixing deposits:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fix deposits',
+      error: error.message
+    });
+  }
+});
+
 
 cron.schedule('0 0 * * *', async () => {
   console.log('Running scheduled sync to Google Sheets at 00:00...');
