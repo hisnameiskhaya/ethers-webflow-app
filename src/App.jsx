@@ -410,6 +410,17 @@ function App() {
     }
   }, [depositedAmount, account]); // Trigger when depositedAmount or account changes
   
+  // Auto-dismiss snackbar messages after 8 seconds (safety fallback)
+  useEffect(() => {
+    if (showSnackbar && snackbarMessage) {
+      const timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 8000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showSnackbar, snackbarMessage]);
+  
   // Global error handler to prevent adjustForBuying crashes and other external script errors
   useEffect(() => {
     const handleGlobalError = (event) => {
@@ -1446,11 +1457,8 @@ const handleMaxClick = (type) => {
         setShowSnackbar(true);
         setShowImportButton(false); // Hide import button, show deposit button again
         
-        // Show success message for longer
-        setTimeout(() => {
-          setSnackbarMessage('You can now view your BRICS balance in MetaMask');
-          setTimeout(() => setShowSnackbar(false), 3000);
-        }, 2000);
+        // Auto-dismiss notification after 5 seconds
+        setTimeout(() => setShowSnackbar(false), 5000);
       } else {
         throw new Error('Token import was cancelled by user');
       }
@@ -1475,6 +1483,9 @@ const handleMaxClick = (type) => {
       
       setSnackbarMessage(errorMessage);
       setShowSnackbar(true);
+      
+      // Auto-dismiss error notification after 5 seconds
+      setTimeout(() => setShowSnackbar(false), 5000);
       
       // Keep import button visible so user can try again
       setShowImportButton(true);
