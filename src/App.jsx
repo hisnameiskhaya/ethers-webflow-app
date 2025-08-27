@@ -488,18 +488,30 @@ function App() {
     if (accounts.length > 0) {
       setAccount(accounts[0]);
       setError(null);
-      const signer = await provider.getSigner();
-      setSigner(signer);
-      fetchEnsData(accounts[0]);
-      fetchBalances(provider, accounts[0]);
-      const onBaseNetwork = await isBaseNetwork(provider);
-      if (!onBaseNetwork) {
-        setError('For the best experience, please connect to Base network');
-      } else {
-        setError(null);
-        verifyBaseUSDT(provider).then(verified => {
-          if (!verified) console.warn("USDT verification failed on Base");
-        });
+      
+      // Guard against null provider
+      if (!provider) {
+        console.warn('Provider is null, cannot get signer');
+        return;
+      }
+      
+      try {
+        const signer = await provider.getSigner();
+        setSigner(signer);
+        fetchEnsData(accounts[0]);
+        fetchBalances(provider, accounts[0]);
+        const onBaseNetwork = await isBaseNetwork(provider);
+        if (!onBaseNetwork) {
+          setError('For the best experience, please connect to Base network');
+        } else {
+          setError(null);
+          verifyBaseUSDT(provider).then(verified => {
+            if (!verified) console.warn("USDT verification failed on Base");
+          });
+        }
+      } catch (error) {
+        console.error('Error getting signer:', error);
+        setError('Failed to initialize wallet connection. Please try again.');
       }
     } else {
       setAccount(null);
