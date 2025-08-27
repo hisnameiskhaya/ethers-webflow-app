@@ -280,7 +280,10 @@ async function connectToMongoDB() {
 
 app.use(async (req, res, next) => {
   try {
-    await connectToMongoDB();
+    // Only connect if not already connected
+    if (mongoose.connection.readyState !== 1) {
+      await connectToMongoDB();
+    }
     next();
   } catch (err) {
     console.error('Middleware MongoDB connection error:', err);
@@ -559,16 +562,21 @@ app.get('/api/deposits/:userAddress', async (req, res) => {
     console.log('🔍 Fetching deposits for:', userAddress);
     
     // Ensure we have a database connection
-    if (!mongoose.connection.readyState) {
-      console.warn('⚠️ Database not connected, returning empty results');
-      clearTimeout(requestTimeout);
-      return sendJSONResponse(res, 200, {
-        success: true,
-        message: 'Database not available, returning empty results',
-        deposits: [],
-        totalDeposits: 0,
-        totalBalance: 0
-      });
+    if (mongoose.connection.readyState !== 1) {
+      console.warn('⚠️ Database not connected, attempting to connect...');
+      try {
+        await connectToMongoDB();
+      } catch (dbError) {
+        console.error('❌ Failed to connect to database:', dbError);
+        clearTimeout(requestTimeout);
+        return sendJSONResponse(res, 200, {
+          success: true,
+          message: 'Database not available, returning empty results',
+          deposits: [],
+          totalDeposits: 0,
+          totalBalance: 0
+        });
+      }
     }
     
     // Fetch deposits with timeout protection
