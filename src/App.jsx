@@ -348,10 +348,11 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v6 - DOMAIN ALIAS FIXED");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v7 - REACT ERROR FIXED");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
-  console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks");
-  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-jp1z7q5j9-hisnameiskhayas-projects.vercel.app");
+  console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62");
+  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-km37yw67w-hisnameiskhayas-projects.vercel.app");
+  console.log("🛡️ ERROR BOUNDARY: Added to prevent blank screen");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
@@ -708,10 +709,15 @@ function App() {
         if (account) fetchBalances(ethProvider, account);
       });
 
-      // Initial account check
+      // Initial account check - ensure provider is set first
+      setProvider(ethProvider);
+      
       const accounts = await ethProvider.listAccounts();
       if (accounts.length > 0) {
-        handleAccountsChanged(accounts.map(acc => acc.address));
+        // Use a small delay to ensure provider state is updated
+        setTimeout(() => {
+          handleAccountsChanged(accounts.map(acc => acc.address));
+        }, 100);
       }
     } else {
       console.log("No browser wallet provider found");
@@ -2279,6 +2285,24 @@ const handleCopy = (text) => {
     </>
   );
  
+  // Error boundary to prevent blank screen
+  if (error && error.includes('Failed to initialize')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Connection Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <div className="app-container">
@@ -2298,6 +2322,7 @@ const handleCopy = (text) => {
     </div>
   );
 }
+
 export default App;
 const showMetaMaskModal = () => {
   const modal = document.createElement("div");
