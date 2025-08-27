@@ -348,12 +348,13 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v8 - AGGRESSIVE CACHE BUST");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v9 - CSS REFERENCE FIXED");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62, provider retry");
-  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-oa31mqh82-hisnameiskhayas-projects.vercel.app");
+  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-ib745rm36-hisnameiskhayas-projects.vercel.app");
   console.log("🛡️ ERROR BOUNDARY: Added to prevent blank screen");
   console.log("🚫 CACHE BUST: Aggressive cache invalidation headers applied");
+  console.log("🎨 CSS FIX: Removed hardcoded old CSS reference from index.html");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');

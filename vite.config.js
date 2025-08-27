@@ -16,7 +16,11 @@ export default defineConfig({
           'crypto-js': 'CryptoJS'
         }
       }
-    }
+    },
+    // Force clean build
+    emptyOutDir: true,
+    // Ensure CSS is properly handled
+    cssCodeSplit: false
   },
   optimizeDeps: {
     include: ['crypto-js']
