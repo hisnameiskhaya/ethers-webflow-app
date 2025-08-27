@@ -58,6 +58,9 @@ export const TREASURY_ADDRESSES = {
 const USER_DEPOSITS_KEY = 'usdt_user_deposits';
 const DEPOSIT_HISTORY_KEY = 'usdt_deposit_history';
 
+// Flag to prevent multiple simultaneous BRICS imports
+let isImportingBRICS = false;
+
 // get provider for a specific chain
 export const getChainProvider = async (chainId) => {
   const response = await fetch(`/api/proxy-rpc?chainId=${chainId}`);
@@ -898,9 +901,22 @@ export const getUserDepositedAmount = async (userAddress) => {
 export const addBRICSToMetaMask = async (tokenAddress = null, chainId = 1) => {
   console.log('🔍 addBRICSToMetaMask called with:', { tokenAddress, chainId });
   
+  // Prevent multiple simultaneous imports
+  if (isImportingBRICS) {
+    console.log('🔍 BRICS import already in progress, skipping...');
+    return {
+      success: false,
+      message: 'BRICS import already in progress. Please wait.',
+      details: { error: 'IMPORT_IN_PROGRESS' }
+    };
+  }
+  
+  isImportingBRICS = true;
+  
   try {
     if (!window.ethereum) {
       console.log('🔍 MetaMask not detected');
+      isImportingBRICS = false;
       return {
         success: false,
         message: 'MetaMask not detected. Please install MetaMask to add BRICS tokens.',
@@ -939,6 +955,8 @@ export const addBRICSToMetaMask = async (tokenAddress = null, chainId = 1) => {
     
     console.log('✅ BRICS token successfully added to MetaMask', { result });
     
+    isImportingBRICS = false;
+    
     return {
       success: true,
       message: 'BRICS token successfully added to MetaMask!',
@@ -951,6 +969,8 @@ export const addBRICSToMetaMask = async (tokenAddress = null, chainId = 1) => {
     
   } catch (error) {
     console.warn('Failed to add BRICS to MetaMask:', error);
+    
+    isImportingBRICS = false;
     
     // Enhanced error handling with specific messages
     if (error.code === 4001) {
@@ -1000,11 +1020,31 @@ export const isBRICSInMetaMask = async (tokenAddress = null) => {
 
     const address = tokenAddress || process.env.VITE_BRICS_TOKEN_ADDRESS || '0x9d82c77578FE4114ba55fAbb43F6F4c4650ae85d';
     
-    // Try to get token info - if it exists, this will succeed
-    // Note: This is a heuristic approach since MetaMask doesn't provide a direct API to check
-    // We'll try to add the token and see if it's already there
-    const result = await addBRICSToMetaMask(address);
-    return result.success && result.details?.error === 'ALREADY_ADDED';
+    // Check if we can get the token balance - if it exists, this will succeed
+    // This is a better approach than trying to add the token
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(address, [
+        {
+          "constant": true,
+          "inputs": [{"name": "_owner", "type": "address"}],
+          "name": "balanceOf",
+          "outputs": [{"name": "balance", "type": "uint256"}],
+          "type": "function"
+        }
+      ], provider);
+      
+      // Try to get balance - if token exists, this will work
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        await contract.balanceOf(accounts[0]);
+        return true; // Token exists in MetaMask
+      }
+      return false;
+    } catch (error) {
+      // If we get an error, the token probably doesn't exist
+      return false;
+    }
     
   } catch (error) {
     console.warn('Error checking if BRICS is in MetaMask:', error);
@@ -1028,19 +1068,9 @@ export const smartAddBRICSToMetaMask = async (options = {}) => {
   console.log('🔍 smartAddBRICSToMetaMask called with options:', options);
 
   try {
-    // Check if already added (optional)
-    if (checkExisting) {
-      console.log('🔍 Checking if BRICS token already exists...');
-      const isAlreadyAdded = await isBRICSInMetaMask(tokenAddress);
-      console.log('🔍 Token already exists:', isAlreadyAdded);
-      if (isAlreadyAdded) {
-        return {
-          success: true,
-          message: 'BRICS token is already in your MetaMask wallet.',
-          details: { alreadyAdded: true }
-        };
-      }
-    }
+    // Skip the check for now - MetaMask will handle duplicates gracefully
+    // The check was causing double imports, so we'll let MetaMask handle it
+    console.log('🔍 Skipping token existence check to prevent double imports');
 
     // Add the token
     console.log('🔍 Adding BRICS token to MetaMask...');
