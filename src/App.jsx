@@ -348,11 +348,12 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v7 - REACT ERROR FIXED");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v8 - AGGRESSIVE CACHE BUST");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
-  console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62");
-  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-km37yw67w-hisnameiskhayas-projects.vercel.app");
+  console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62, provider retry");
+  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-oa31mqh82-hisnameiskhayas-projects.vercel.app");
   console.log("🛡️ ERROR BOUNDARY: Added to prevent blank screen");
+  console.log("🚫 CACHE BUST: Aggressive cache invalidation headers applied");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
@@ -509,10 +510,18 @@ function App() {
     setAccount(accountAddress);
     setError(null);
     
-    // Guard against null provider
+    // Guard against null provider with retry logic
     if (!provider) {
-      console.warn('⚠️ Provider is null, cannot get signer');
-      setError('Wallet provider not initialized. Please refresh and try again.');
+      console.warn('⚠️ Provider is null, cannot get signer - will retry in 1 second');
+      // Retry after a delay in case provider is still initializing
+      setTimeout(() => {
+        if (provider) {
+          console.log('🔄 Retrying getSigner after provider initialization');
+          handleAccountsChanged(accounts);
+        } else {
+          setError('Wallet provider not initialized. Please refresh and try again.');
+        }
+      }, 1000);
       return;
     }
     
@@ -714,10 +723,10 @@ function App() {
       
       const accounts = await ethProvider.listAccounts();
       if (accounts.length > 0) {
-        // Use a small delay to ensure provider state is updated
+        // Use a longer delay to ensure provider state is fully updated
         setTimeout(() => {
           handleAccountsChanged(accounts.map(acc => acc.address));
-        }, 100);
+        }, 500);
       }
     } else {
       console.log("No browser wallet provider found");
