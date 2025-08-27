@@ -348,8 +348,9 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v4 - FINAL DOMAIN FIX");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v5 - ALL ISSUES FIXED");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
+  console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
@@ -486,21 +487,45 @@ function App() {
 
   // Handle account changes
   const handleAccountsChanged = async (accounts) => {
-    if (accounts.length > 0) {
-      setAccount(accounts[0]);
-      setError(null);
+    console.log('🔄 handleAccountsChanged called with accounts:', accounts);
+    
+    if (!accounts || accounts.length === 0) {
+      console.log('🔄 No accounts provided, clearing state');
+      setAccount(null);
+      setProvider(null);
+      setSigner(null);
+      setBalance(0);
+      setTreasuryBalance(0);
+      setError('Wallet disconnected externally.');
+      setEnsAvatar(null);
+      setEnsName(null);
+      return;
+    }
+
+    const accountAddress = accounts[0];
+    console.log('🔄 Setting account:', accountAddress);
+    setAccount(accountAddress);
+    setError(null);
+    
+    // Guard against null provider
+    if (!provider) {
+      console.warn('⚠️ Provider is null, cannot get signer');
+      setError('Wallet provider not initialized. Please refresh and try again.');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Getting signer from provider...');
+      const signer = await provider.getSigner();
+      console.log('✅ Signer obtained successfully');
+      setSigner(signer);
       
-      // Guard against null provider
-      if (!provider) {
-        console.warn('Provider is null, cannot get signer');
-        return;
-      }
-      
-      try {
-        const signer = await provider.getSigner();
-        setSigner(signer);
-        fetchEnsData(accounts[0]);
-        fetchBalances(provider, accounts[0]);
+      // Fetch data only if we have both account and signer
+      if (accountAddress && signer) {
+        console.log('🔄 Fetching ENS data and balances...');
+        fetchEnsData(accountAddress);
+        fetchBalances(provider, accountAddress);
+        
         const onBaseNetwork = await isBaseNetwork(provider);
         if (!onBaseNetwork) {
           setError('For the best experience, please connect to Base network');
@@ -510,19 +535,12 @@ function App() {
             if (!verified) console.warn("USDT verification failed on Base");
           });
         }
-      } catch (error) {
-        console.error('Error getting signer:', error);
-        setError('Failed to initialize wallet connection. Please try again.');
       }
-    } else {
-      setAccount(null);
-      setProvider(null);
+    } catch (error) {
+      console.error('❌ Error getting signer:', error);
+      setError('Failed to initialize wallet connection. Please try again.');
+      // Don't clear the account, just the signer
       setSigner(null);
-      setBalance(0);
-      setTreasuryBalance(0);
-      setError('Wallet disconnected externally.');
-      setEnsAvatar(null);
-      setEnsName(null);
     }
   };
 
