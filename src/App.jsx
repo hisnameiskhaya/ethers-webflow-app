@@ -397,6 +397,7 @@ function App() {
   const [deposits, setDeposits] = useState([]);
   const [isBRICSIntegration, setIsBRICSIntegration] = useState(false);
   const [showImportButton, setShowImportButton] = useState(false);
+  const [hasPromptedForImport, setHasPromptedForImport] = useState(false);
 
   // Show Import button when user has BRICS tokens
   useEffect(() => {
@@ -794,6 +795,12 @@ const triggerSmartBRICSImport = async (ethProvider, userAddress, depositedAmount
   try {
     console.log('🧠 Triggering smart BRICS import check...');
     
+    // Check if we've already prompted for import in this session
+    if (hasPromptedForImport) {
+      console.log('🧠 Already prompted for import in this session, skipping...');
+      return { success: true, shouldImport: false };
+    }
+    
     // Get current BRICS balance from wallet
     const bricsBalance = await getBRICSBalance(ethProvider, userAddress);
     console.log('🧠 BRICS balance check result:', { depositedAmount, bricsBalance });
@@ -810,6 +817,7 @@ const triggerSmartBRICSImport = async (ethProvider, userAddress, depositedAmount
       console.log('🎉 BRICS import triggered successfully!');
       setSnackbarMessage(importResult.message);
       setShowSnackbar(true);
+      setHasPromptedForImport(true); // Mark as prompted
     } else {
       console.log('ℹ️ BRICS import not needed:', importResult.message);
     }
@@ -1419,6 +1427,9 @@ const handleMaxClick = (type) => {
   const handleImportBRICS = async () => {
     console.log('🪙 User clicked Import BRICS button');
     
+    // Reset the prompt flag so user can retry
+    setHasPromptedForImport(false);
+    
     // Set loading state
     setIsProcessing(true);
     setError(null);
@@ -1426,41 +1437,25 @@ const handleMaxClick = (type) => {
     setSnackbarMessage('Adding BRICS token to MetaMask...');
     
     try {
-      // Check if MetaMask is available
-      if (!window.ethereum) {
-        throw new Error('MetaMask is not installed. Please install MetaMask to import tokens.');
-      }
-
-      // Check if user is connected to MetaMask
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      if (!accounts || accounts.length === 0) {
-        throw new Error('Please connect your MetaMask wallet first.');
-      }
-
-      const result = await window.ethereum.request({
-        method: 'wallet_watchAsset',
-        params: {
-          type: 'ERC20',
-          options: {
-            address: '0x9d82c77578FE4114ba55fAbb43F6F4c4650ae85d',
-            symbol: 'BRICS',
-            decimals: 6,
-            image: 'https://cdn.prod.website-files.com/64bfd6fe2a5deee25984d618/68ae0b40d8772588776a62e6_doll%20regulator_256.png'
-          }
-        }
+      // Use the smart import logic instead of direct MetaMask call
+      const importResult = await smartAddBRICSToMetaMask({
+        tokenAddress: '0x9d82c77578FE4114ba55fAbb43F6F4c4650ae85d',
+        chainId: 1,
+        showUserPrompt: true
       });
       
-      console.log('✅ Import BRICS result:', result);
+      console.log('✅ Import BRICS result:', importResult);
       
-      if (result) {
+      if (importResult.success) {
         setSnackbarMessage('🎉 BRICS token successfully added to MetaMask!');
         setShowSnackbar(true);
         setShowImportButton(false); // Hide import button, show deposit button again
+        setHasPromptedForImport(true); // Mark as prompted
         
         // Auto-dismiss notification after 5 seconds
         setTimeout(() => setShowSnackbar(false), 5000);
       } else {
-        throw new Error('Token import was cancelled by user');
+        throw new Error(importResult.message || 'Token import failed');
       }
       
     } catch (error) {
