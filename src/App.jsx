@@ -348,7 +348,8 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v3 - DOMAIN UPDATE FORCE");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v4 - FINAL DOMAIN FIX");
+  console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
