@@ -348,7 +348,7 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v2");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v3 - DOMAIN UPDATE FORCE");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
