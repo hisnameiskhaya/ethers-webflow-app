@@ -559,7 +559,7 @@ function App() {
               platform: navigator.platform
             });
             
-            if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
+            if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded && false) {
               console.log('BRICS Integration - Mobile device detected, redirecting to MetaMask app');
               localStorage.setItem('walletConnectionAttempt', 'true');
               const vercelAppUrl = 'https://buy.brics.ninja';
@@ -883,7 +883,7 @@ const fetchBalances = async (ethProvider, userAddress) => {
       platform: navigator.platform
     });
     
-    if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
+    if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded && false) {
       console.log('Mobile device detected - redirecting to MetaMask app');
       localStorage.setItem('walletConnectionAttempt', 'true');
       const vercelAppUrl = 'https://buy.brics.ninja';
@@ -1424,7 +1424,7 @@ const renderAboutSection = () => {
 
   return (
     <div className="about-section">
-              <div className="about-title">About BRICS Ninja</div>
+      <div className="about-title">About BRICS</div>
       <div className="about-items">
         {accordionItems.map((item) => (
           <div key={item.key} className="accordion-wrapper">
