@@ -2056,7 +2056,7 @@ app.post('/api/cleanup-fake-deposits', async (req, res) => {
   }
 });
 
-// Fix deposits to match BRICS balance endpoint
+// Fix deposits to match BRICS balance endpoint - v2
 app.post('/api/fix-deposits', async (req, res) => {
   try {
     const { userAddress, targetBalance = 0.01 } = req.body;
