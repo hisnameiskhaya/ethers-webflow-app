@@ -232,19 +232,25 @@ async function connectToMongoDB() {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000, // Increased timeout
       socketTimeoutMS: 30000, // Increased timeout
-    })
-    .then(() => console.log("✅ MongoDB connected"))
-    .catch((err) => console.error("❌ MongoDB connection error:", err));
+    });
+    
+    console.log("✅ MongoDB connected");
     
     console.log('✅ MongoDB connected successfully');
-    console.log('Database Name:', mongooseConnection.connection.db.databaseName);
     
-    // List collections to verify connection
-    try {
-      const collections = await mongooseConnection.connection.db.listCollections().toArray();
-      console.log('📋 Available collections:', collections.map(c => c.name));
-    } catch (collectionError) {
-      console.warn('⚠️ Could not list collections:', collectionError.message);
+    // Safely access connection properties with null checks
+    if (mongooseConnection && mongooseConnection.connection && mongooseConnection.connection.db) {
+      console.log('Database Name:', mongooseConnection.connection.db.databaseName);
+      
+      // List collections to verify connection
+      try {
+        const collections = await mongooseConnection.connection.db.listCollections().toArray();
+        console.log('📋 Available collections:', collections.map(c => c.name));
+      } catch (collectionError) {
+        console.warn('⚠️ Could not list collections:', collectionError.message);
+      }
+    } else {
+      console.warn('⚠️ MongoDB connection established but connection object not fully initialized');
     }
     
     return mongooseConnection;
