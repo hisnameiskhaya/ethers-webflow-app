@@ -1,0 +1,25 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "BRICSToken.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport \"@openzeppelin/contracts/token/ERC20/ERC20.sol\";\nimport \"@openzeppelin/contracts/access/Ownable.sol\";\n\n/**\n * @title BRICS Stablecoin\n * @dev Non-transferable receipt token backed 1:1 by USDT\n * @dev Only owner (backend) can mint/burn tokens\n * @dev Users cannot transfer tokens - they are receipts only\n */\ncontract BRICSToken is ERC20, Ownable {\n    \n    // Treasury address that holds USDT backing\n    address public immutable treasuryAddress;\n    \n    // Events for transparency\n    event BRICSMinted(address indexed to, uint256 amount, uint256 timestamp);\n    event BRICSBurned(address indexed from, uint256 amount, uint256 timestamp);\n    \n    /**\n     * @dev Constructor sets up the token with proper metadata\n     * @param _treasuryAddress The address of the treasury holding USDT backing\n     */\n    constructor(address _treasuryAddress) ERC20(\"BRICS Stablecoin\", \"BRICS\") Ownable(msg.sender) {\n        require(_treasuryAddress != address(0), \"Invalid treasury address\");\n        treasuryAddress = _treasuryAddress;\n    }\n    \n    /**\n     * @dev Mint BRICS tokens to a user (only owner/backend)\n     * @param to The address to mint tokens to\n     * @param amount The amount of BRICS to mint (6 decimals)\n     */\n    function mint(address to, uint256 amount) external onlyOwner {\n        require(to != address(0), \"Cannot mint to zero address\");\n        require(amount > 0, \"Amount must be greater than 0\");\n        \n        _mint(to, amount);\n        \n        emit BRICSMinted(to, amount, block.timestamp);\n    }\n    \n    /**\n     * @dev Burn BRICS tokens from a user (only owner/backend)\n     * @param from The address to burn tokens from\n     * @param amount The amount of BRICS to burn (6 decimals)\n     */\n    function burn(address from, uint256 amount) external onlyOwner {\n        require(from != address(0), \"Cannot burn from zero address\");\n        require(amount > 0, \"Amount must be greater than 0\");\n        require(balanceOf(from) >= amount, \"Insufficient balance to burn\");\n        \n        _burn(from, amount);\n        \n        emit BRICSBurned(from, amount, block.timestamp);\n    }\n    \n    /**\n     * @dev Override transfer function to prevent transfers\n     * @dev This makes BRICS a non-transferable receipt token\n     */\n    function transfer(address, uint256) public pure override returns (bool) {\n        revert(\"BRICS tokens are non-transferable receipts\");\n    }\n    \n    /**\n     * @dev Override transferFrom function to prevent transfers\n     * @dev This makes BRICS a non-transferable receipt token\n     */\n    function transferFrom(address, address, uint256) public pure override returns (bool) {\n        revert(\"BRICS tokens are non-transferable receipts\");\n    }\n    \n    /**\n     * @dev Override approve function to prevent approvals\n     * @dev Since transfers are disabled, approvals are not needed\n     */\n    function approve(address, uint256) public pure override returns (bool) {\n        revert(\"BRICS tokens are non-transferable receipts\");\n    }\n    \n    /**\n     * @dev Override increaseAllowance function\n     */\n    /**\n     * @dev Override decreaseAllowance function\n     */\n    /**\n     * @dev Get treasury address for verification\n     */\n    function getTreasuryAddress() external view returns (address) {\n        return treasuryAddress;\n    }\n    \n    /**\n     * @dev Get total supply of BRICS tokens\n     */\n    function totalSupply() public view override returns (uint256) {\n        return super.totalSupply();\n    }\n    \n    /**\n     * @dev Get balance of BRICS tokens for an address\n     */\n    function balanceOf(address account) public view override returns (uint256) {\n        return super.balanceOf(account);\n    }\n    \n    /**\n     * @dev Override decimals to match USDT (6 decimals)\n     */\n    function decimals() public pure override returns (uint8) {\n        return 6;\n    }\n}"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "evmVersion": "paris",
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers"
+        ]
+      }
+    }
+  }
+}

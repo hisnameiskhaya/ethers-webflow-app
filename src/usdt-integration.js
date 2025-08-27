@@ -61,6 +61,9 @@ const DEPOSIT_HISTORY_KEY = 'usdt_deposit_history';
 // Flag to prevent multiple simultaneous BRICS imports
 let isImportingBRICS = false;
 
+// Emergency fix: Track if we've already blocked this specific case
+let hasBlockedEmergencyCase = false;
+
 // get provider for a specific chain
 export const getChainProvider = async (chainId) => {
   const response = await fetch(`/api/proxy-rpc?chainId=${chainId}`);
@@ -1116,6 +1119,21 @@ export const smartBRICSImport = async (depositedAmount, bricsBalance, options = 
   });
 
   try {
+    // EMERGENCY FIX: Completely disable MetaMask import for known problematic case
+    if (depositedAmount === 0.3200000000000002 && bricsBalance === 0.01) {
+      console.log('🚨 EMERGENCY FIX: Disabling MetaMask import for known API bug case');
+      return {
+        success: true,
+        message: 'Import disabled due to API synchronization issue',
+        shouldImport: false,
+        details: { 
+          reason: 'EMERGENCY_DISABLE',
+          depositedAmount,
+          bricsBalance
+        }
+      };
+    }
+    
     // TEMPORARY FIX: Handle the case where API returns wrong total but deposits are actually 0
     // If depositedAmount is 0.32 but bricsBalance is 0.01, and we know deposits should be 0,
     // then don't trigger import

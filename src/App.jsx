@@ -350,7 +350,7 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v13 - SMART METAMASK INTEGRATION");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v14 - PRODUCTION DEPLOYMENT FORCE");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62, provider retry");
   console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-d3x0qj6z4-hisnameiskhayas-projects.vercel.app");
