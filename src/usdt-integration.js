@@ -923,7 +923,8 @@ export const addBRICSToMetaMask = async (tokenAddress = null, chainId = 1) => {
       address: address,
       symbol: 'BRICS',
       decimals: 6,
-      image: 'https://cdn.prod.website-files.com/64bfd6fe2a5deee25984d618/68ae0b40d8772588776a62e6_doll%20regulator_256.png'
+      image: 'https://cdn.prod.website-files.com/64bfd6fe2a5deee25984d618/68ae0b40d8772588776a62e6_doll%20regulator_256.png',
+      name: 'BRICS Stablecoin'
     };
     
     // Add token to MetaMask

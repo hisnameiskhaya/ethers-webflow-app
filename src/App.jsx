@@ -348,14 +348,16 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v10 - REACT STYLES FIXED");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v11 - UI CLEANUP & METAMASK FIX");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62, provider retry");
-  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-8wfy5hknk-hisnameiskhayas-projects.vercel.app");
+  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-804yowirk-hisnameiskhayas-projects.vercel.app");
   console.log("🛡️ ERROR BOUNDARY: Added to prevent blank screen");
   console.log("🚫 CACHE BUST: Aggressive cache invalidation headers applied");
   console.log("🎨 CSS FIX: Removed hardcoded old CSS reference from index.html");
   console.log("🎯 REACT FIX: Converted string-based inline styles to objects");
+  console.log("🎨 UI CLEANUP: Comprehensive CSS styles applied");
+  console.log("🔗 METAMASK FIX: Token import functionality enhanced");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
