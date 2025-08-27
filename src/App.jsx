@@ -348,13 +348,14 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v9 - CSS REFERENCE FIXED");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v10 - REACT STYLES FIXED");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62, provider retry");
-  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-ib745rm36-hisnameiskhayas-projects.vercel.app");
+  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-8wfy5hknk-hisnameiskhayas-projects.vercel.app");
   console.log("🛡️ ERROR BOUNDARY: Added to prevent blank screen");
   console.log("🚫 CACHE BUST: Aggressive cache invalidation headers applied");
   console.log("🎨 CSS FIX: Removed hardcoded old CSS reference from index.html");
+  console.log("🎯 REACT FIX: Converted string-based inline styles to objects");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
@@ -1852,10 +1853,10 @@ const handleCopy = (text) => {
       <div className="content-container">
         <div className="card balance-card">
           <div className="balance-label">USDT balance</div>
-          <div className="balance-label" style="margin-top: 15px; font-size: 14px; color: #666;">BRICS balance</div>
-          <div className="balance-container" style="margin-top: 5px;">
-            <div className="balance-amount" style="font-size: 16px; color: #2c5aa0;">{bricsBalance.toFixed(6)} BRICS</div>
-            <div className="profit-info" style="font-size: 12px; color: #888;">
+          <div className="balance-label" style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>BRICS balance</div>
+          <div className="balance-container" style={{ marginTop: '5px' }}>
+            <div className="balance-amount" style={{ fontSize: '16px', color: '#2c5aa0' }}>{bricsBalance.toFixed(6)} BRICS</div>
+            <div className="profit-info" style={{ fontSize: '12px', color: '#888' }}>
               1:1 backed by USDT
             </div>
           </div>
