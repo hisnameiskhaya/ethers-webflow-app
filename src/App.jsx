@@ -39,6 +39,8 @@ import {
   addBRICSToMetaMask,
   smartAddBRICSToMetaMask,
   isBRICSInMetaMask,
+  smartBRICSImport,
+  getBRICSBalance,
 } from './usdt-integration';
 
 import { 
@@ -348,7 +350,7 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v12 - ORIGINAL UI RESTORED");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v13 - SMART METAMASK INTEGRATION");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62, provider retry");
   console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-d3x0qj6z4-hisnameiskhayas-projects.vercel.app");
@@ -776,6 +778,39 @@ function App() {
     }
   };
 
+// Smart MetaMask import trigger function
+const triggerSmartBRICSImport = async (ethProvider, userAddress, depositedAmount, chainId) => {
+  try {
+    console.log('🧠 Triggering smart BRICS import check...');
+    
+    // Get current BRICS balance from wallet
+    const bricsBalance = await getBRICSBalance(ethProvider, userAddress);
+    console.log('🧠 BRICS balance check result:', { depositedAmount, bricsBalance });
+    
+    // Trigger smart import logic
+    const importResult = await smartBRICSImport(depositedAmount, bricsBalance, {
+      chainId,
+      showUserPrompt: true
+    });
+    
+    console.log('🧠 Smart import result:', importResult);
+    
+    if (importResult.shouldImport) {
+      console.log('🎉 BRICS import triggered successfully!');
+      setSnackbarMessage(importResult.message);
+      setShowSnackbar(true);
+    } else {
+      console.log('ℹ️ BRICS import not needed:', importResult.message);
+    }
+    
+    return importResult;
+    
+  } catch (error) {
+    console.error('❌ Error in smart BRICS import:', error);
+    return { success: false, shouldImport: false };
+  }
+};
+
 // Updated fetchBalances function
 const fetchBalances = async (ethProvider, userAddress) => {
   try {
@@ -814,6 +849,12 @@ const fetchBalances = async (ethProvider, userAddress) => {
       setProfit(totalAccumulatedYield);
 
       setDeposits(deposits.filter(d => d.chainId === highestBalanceChain));
+      
+      // Trigger smart BRICS import after balance update
+      if (totalDeposited > 0) {
+        console.log('🧠 Deposits found, checking if BRICS import is needed...');
+        await triggerSmartBRICSImport(ethProvider, userAddress, totalDeposited, highestBalanceChain);
+      }
     } else {
       setDepositedAmount(0);
       setProfit(0);
@@ -1300,48 +1341,27 @@ const handleDeposit = async () => {
       console.log("[DEBUG] Balance refresh completed");
       console.log("[DEBUG] About to check depositedAmount:", depositedAmount);
       
-      console.log("[DEBUG] ===== META MASK INTEGRATION START =====");
-      // 🪙 Smart MetaMask popup trigger - only for users with positive BRICS balance
-      console.log("[DEBUG] Checking if user has positive BRICS balance for popup...");
+      console.log("[DEBUG] ===== SMART META MASK INTEGRATION START =====");
+      // 🧠 Smart MetaMask import trigger after successful deposit
+      console.log("[DEBUG] Checking if BRICS import is needed after deposit...");
       
-      // Check if user has positive deposited amount (indicating they have BRICS tokens)
-      if (depositedAmount > 0) {
-        console.log("[DEBUG] User has positive balance, triggering MetaMask popup...");
-        try {
-          const tokenMetadata = {
-            address: '0x9d82c77578FE4114ba55fAbb43F6F4c4650ae85d',
-            symbol: 'BRICS',
-            decimals: 6,
-            image: 'https://cdn.prod.website-files.com/64bfd6fe2a5deee25984d618/68ae0b40d8772588776a62e6_doll%20regulator_256.png'
-          };
-          
-          console.log("[DEBUG] Calling wallet_watchAsset for user with positive balance...");
-          
-          // Use setTimeout to avoid CSP issues
-          setTimeout(async () => {
-            try {
-              const result = await window.ethereum.request({
-                method: 'wallet_watchAsset',
-                params: {
-                  type: 'ERC20',
-                  options: tokenMetadata
-                }
-              });
-              
-              console.log("[DEBUG] MetaMask popup result:", result);
-              setSnackbarMessage('Deposit successful! BRICS token added to MetaMask.');
-            } catch (popupError) {
-              console.warn("[DEBUG] MetaMask popup failed:", popupError.message);
-              setSnackbarMessage('Deposit successful! Data synced to Google Sheets.');
-            }
-          }, 1000); // 1 second delay to avoid CSP issues
-          
-        } catch (popupError) {
-          console.warn("[DEBUG] MetaMask popup setup failed:", popupError.message);
+      // Get the updated deposited amount after the deposit
+      const updatedDepositedAmount = depositedAmount + parseFloat(amount);
+      console.log("[DEBUG] Updated deposited amount:", updatedDepositedAmount);
+      
+      // Trigger smart BRICS import with updated amount
+      try {
+        const importResult = await triggerSmartBRICSImport(freshProvider, account, updatedDepositedAmount, selectedChain);
+        
+        if (importResult.shouldImport) {
+          console.log("[DEBUG] BRICS import triggered successfully after deposit");
+          setSnackbarMessage('Deposit successful! BRICS token added to MetaMask.');
+        } else {
+          console.log("[DEBUG] BRICS import not needed after deposit:", importResult.message);
           setSnackbarMessage('Deposit successful! Data synced to Google Sheets.');
         }
-      } else {
-        console.log("[DEBUG] User has no positive balance, skipping MetaMask popup");
+      } catch (importError) {
+        console.warn("[DEBUG] Smart BRICS import failed after deposit:", importError.message);
         setSnackbarMessage('Deposit successful! Data synced to Google Sheets.');
       }
       

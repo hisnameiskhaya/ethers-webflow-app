@@ -1064,3 +1064,186 @@ export const smartAddBRICSToMetaMask = async (options = {}) => {
   }
 };
 
+/**
+ * Smart BRICS token import function that only triggers when appropriate
+ * @param {number} depositedAmount - Amount deposited on platform
+ * @param {number} bricsBalance - Current BRICS balance in wallet
+ * @param {Object} options - Additional options
+ * @returns {Promise<{success: boolean, message: string, shouldImport: boolean, details?: any}>}
+ */
+export const smartBRICSImport = async (depositedAmount, bricsBalance, options = {}) => {
+  const {
+    tokenAddress = null,
+    chainId = 1,
+    forceImport = false,
+    showUserPrompt = true
+  } = options;
+
+  console.log('🧠 smartBRICSImport called with:', { 
+    depositedAmount, 
+    bricsBalance, 
+    options 
+  });
+
+  try {
+    // Calculate if import should be triggered
+    const shouldImport = forceImport || (depositedAmount > bricsBalance && depositedAmount > 0);
+    
+    console.log('🧠 Import decision:', {
+      depositedAmount,
+      bricsBalance,
+      difference: depositedAmount - bricsBalance,
+      shouldImport,
+      forceImport
+    });
+
+    // Don't import if user has more BRICS than deposits (implies pending withdrawal)
+    if (bricsBalance > depositedAmount) {
+      console.log('🧠 Skipping import - user has more BRICS than deposits (pending withdrawal)');
+      return {
+        success: true,
+        message: 'Skipping import - you have more BRICS than deposits',
+        shouldImport: false,
+        details: { 
+          reason: 'BRICS_BALANCE_EXCEEDS_DEPOSITS',
+          depositedAmount,
+          bricsBalance
+        }
+      };
+    }
+
+    // Don't import if no deposits
+    if (depositedAmount <= 0) {
+      console.log('🧠 Skipping import - no deposits found');
+      return {
+        success: true,
+        message: 'No deposits found - import not needed',
+        shouldImport: false,
+        details: { 
+          reason: 'NO_DEPOSITS',
+          depositedAmount
+        }
+      };
+    }
+
+    // Don't import if balances are equal (user already has tokens)
+    if (depositedAmount === bricsBalance && depositedAmount > 0) {
+      console.log('🧠 Skipping import - balances are equal (tokens already imported)');
+      return {
+        success: true,
+        message: 'BRICS tokens already imported',
+        shouldImport: false,
+        details: { 
+          reason: 'BALANCES_EQUAL',
+          depositedAmount,
+          bricsBalance
+        }
+      };
+    }
+
+    // Trigger import if conditions are met
+    if (shouldImport) {
+      console.log('🧠 Triggering BRICS import - conditions met');
+      
+      const importResult = await smartAddBRICSToMetaMask({
+        tokenAddress,
+        chainId,
+        checkExisting: true,
+        showUserPrompt
+      });
+
+      return {
+        success: importResult.success,
+        message: importResult.message,
+        shouldImport: true,
+        details: {
+          reason: 'IMPORT_TRIGGERED',
+          depositedAmount,
+          bricsBalance,
+          importResult
+        }
+      };
+    }
+
+    // Default case - no import needed
+    return {
+      success: true,
+      message: 'Import not needed at this time',
+      shouldImport: false,
+      details: { 
+        reason: 'NO_IMPORT_NEEDED',
+        depositedAmount,
+        bricsBalance
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Error in smartBRICSImport:', error);
+    return {
+      success: false,
+      message: 'Failed to process BRICS import logic',
+      shouldImport: false,
+      details: { 
+        error: error.message,
+        depositedAmount,
+        bricsBalance
+      }
+    };
+  }
+};
+
+/**
+ * Get BRICS balance from wallet (if available)
+ * @param {Object} provider - Ethers provider
+ * @param {string} address - User wallet address
+ * @param {string} tokenAddress - BRICS token address
+ * @returns {Promise<number>} - BRICS balance
+ */
+export const getBRICSBalance = async (provider, address, tokenAddress = null) => {
+  try {
+    if (!provider || !address) {
+      console.log('🔍 No provider or address provided for BRICS balance check');
+      return 0;
+    }
+
+    const tokenAddr = tokenAddress || process.env.VITE_BRICS_TOKEN_ADDRESS || '0x9d82c77578FE4114ba55fAbb43F6F4c4650ae85d';
+    
+    // BRICS token ABI (simplified)
+    const BRICS_ABI = [
+      {
+        "constant": true,
+        "inputs": [{"name": "_owner", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"name": "", "type": "uint8"}],
+        "type": "function"
+      }
+    ];
+
+    const contract = new ethers.Contract(tokenAddr, BRICS_ABI, provider);
+    const rawBalance = await contract.balanceOf(address);
+    const decimals = await contract.decimals();
+    const balance = parseFloat(ethers.formatUnits(rawBalance, decimals));
+
+    console.log('🔍 BRICS balance check:', {
+      address,
+      tokenAddr,
+      rawBalance: rawBalance.toString(),
+      decimals,
+      balance
+    });
+
+    return balance;
+
+  } catch (error) {
+    console.warn('⚠️ Could not fetch BRICS balance:', error);
+    return 0;
+  }
+};
+
