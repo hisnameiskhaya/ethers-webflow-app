@@ -88,10 +88,23 @@ app.use('/api/withdraw', rateLimit({
 
 // Update CORS middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:4173', 'https://buybrics.vercel.app', 'https://docs.google.com'],
-  methods: ['GET', 'POST'],
+  origin: [
+    'http://localhost:5173', 
+    'http://localhost:4173', 
+    'https://buybrics.vercel.app', 
+    'https://buy.brics.ninja',
+    'https://brics.ninja',
+    'https://www.brics.ninja',
+    'https://docs.google.com'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 
 // Health check endpoint to verify backend is running
