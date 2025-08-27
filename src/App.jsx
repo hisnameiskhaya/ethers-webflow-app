@@ -348,9 +348,10 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v5 - ALL ISSUES FIXED");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v6 - DOMAIN ALIAS FIXED");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks");
+  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-jp1z7q5j9-hisnameiskhayas-projects.vercel.app");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
