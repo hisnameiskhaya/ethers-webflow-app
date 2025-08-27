@@ -602,8 +602,9 @@ app.get('/api/deposits/:userAddress', async (req, res) => {
     const usdtWithdrawals = withdrawals.filter(w => w.chainId !== 11155111);
     const mockUsdtWithdrawals = withdrawals.filter(w => w.chainId === 11155111);
 
-    const totalUsdtDeposited = usdtDeposits.reduce((sum, deposit) => sum + deposit.currentBalance, 0);
-    const totalMockUsdtDeposited = mockUsdtDeposits.reduce((sum, deposit) => sum + deposit.currentBalance, 0);
+    // CRITICAL FIX: Use currentBalance instead of amount for accurate totals
+    const totalUsdtDeposited = usdtDeposits.reduce((sum, deposit) => sum + (deposit.currentBalance || 0), 0);
+    const totalMockUsdtDeposited = mockUsdtDeposits.reduce((sum, deposit) => sum + (deposit.currentBalance || 0), 0);
     const totalUsdtWithdrawn = usdtWithdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
     const totalMockUsdtWithdrawn = mockUsdtWithdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
 
