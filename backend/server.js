@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import { syncDepositsToSheet, syncWithdrawalsToSheet, updateYieldFromSheet, updateWithdrawalStatusFromSheet } from './sheets.js';
 import cron from 'node-cron';
 import { executeTransfer, validateChainConfiguration, getTreasuryBalance, checkTransactionStatus, validateUSDTTransfer, CHAIN_CONFIG, getSigner } from './usdt-contract.js';
+import { mintBRICSTokens } from './brics-contract.js';
 import { google } from 'googleapis'; // Added
 import { MongoClient } from 'mongodb';
 
@@ -840,6 +841,21 @@ app.post('/api/deposits', async (req, res) => {
         await deposit.save();
         console.log(`✅ Deposit saved successfully: ${parsedAmount} USDT for ${normalizedUserAddress} on chain ${parsedChainId}`);
         
+        // 🪙 MINT BRICS TOKENS: Automatically mint BRICS tokens after successful deposit
+        let mintResult = null;
+        let mintingSuccess = false;
+        try {
+          console.log(`🪙 Minting BRICS tokens: ${parsedAmount} BRICS to ${normalizedUserAddress} on chain ${parsedChainId}`);
+          mintResult = await mintBRICSTokens(normalizedUserAddress, parsedAmount, parsedChainId);
+          console.log(`✅ BRICS tokens minted successfully: ${parsedAmount} to ${normalizedUserAddress}`);
+          console.log(`   Transaction: ${mintResult.transactionHash}`);
+          mintingSuccess = true;
+        } catch (mintError) {
+          console.error(`❌ BRICS minting failed: ${mintError.message}`);
+          // Don't fail the deposit if minting fails - log error but continue
+          // The user can still see their deposit was successful
+        }
+        
         // Update treasury balance tracking
         try {
           const config = CHAIN_CONFIG[parsedChainId];
@@ -895,6 +911,14 @@ app.post('/api/deposits', async (req, res) => {
             treasuryTxHash: treasuryTxHash,
             amount: parsedAmount,
             chainId: parsedChainId
+          },
+          bricsMinting: {
+            success: mintingSuccess,
+            amount: parsedAmount,
+            message: mintingSuccess 
+              ? 'BRICS tokens automatically minted to your wallet' 
+              : 'Deposit successful but BRICS minting failed - contact support',
+            transactionHash: mintResult?.transactionHash || null
           },
           message: 'Deposit recorded successfully after transaction validation'
         });
