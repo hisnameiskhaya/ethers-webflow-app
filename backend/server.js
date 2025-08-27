@@ -2401,7 +2401,7 @@ app.get('/api/check-user-data', async (req, res) => {
       }
     });
 
-    // Calculate totals using current balances (not original amounts)
+    // Calculate totals using current balances (not original amounts) - v2
     const totalDeposited = deposits.reduce((sum, d) => sum + (d.currentBalance || 0), 0);
     const totalWithdrawn = withdrawals.reduce((sum, w) => sum + (w.amount || 0), 0);
     const netBalance = totalDeposited - totalWithdrawn;
