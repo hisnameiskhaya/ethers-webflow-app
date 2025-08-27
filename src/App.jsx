@@ -348,16 +348,16 @@ const initializeBRICSIntegration = () => {
 };
 
 function App() {
-  console.log("✅ Cursor test deploy succeeded! - Cache refresh v11 - UI CLEANUP & METAMASK FIX");
+  console.log("✅ Cursor test deploy succeeded! - Cache refresh v12 - ORIGINAL UI RESTORED");
   console.log("🔄 DOMAIN UPDATE CHECK - If you see this, the domain is updated!");
   console.log("🔧 FIXES APPLIED: CSS bundling, CORS, getSigner null checks, React error #62, provider retry");
-  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-804yowirk-hisnameiskhayas-projects.vercel.app");
+  console.log("🎯 DOMAIN ALIAS: buy.brics.ninja -> buybrics-d3x0qj6z4-hisnameiskhayas-projects.vercel.app");
   console.log("🛡️ ERROR BOUNDARY: Added to prevent blank screen");
   console.log("🚫 CACHE BUST: Aggressive cache invalidation headers applied");
   console.log("🎨 CSS FIX: Removed hardcoded old CSS reference from index.html");
   console.log("🎯 REACT FIX: Converted string-based inline styles to objects");
-  console.log("🎨 UI CLEANUP: Comprehensive CSS styles applied");
-  console.log("🔗 METAMASK FIX: Token import functionality enhanced");
+  console.log("🎨 UI RESTORED: Removed BRICS balance, MetaMask popups, reverted to original design");
+  console.log("🔗 METAMASK: Removed automatic token import, restored clean UI");
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
@@ -1074,14 +1074,8 @@ const fetchBalances = async (ethProvider, userAddress) => {
         }
       } else {
         if (isMobileDevice) {
-          console.log('Mobile device - no wallet detected, showing MetaMask modal');
-          showMetaMaskModal();
-          return;
-          const vercelAppUrl = 'https://buy.brics.ninja';
-          const metamaskUrl = `https://metamask.app.link/dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
-          console.log('Opening MetaMask app URL:', metamaskUrl);
-          // window.open(metamaskUrl, '_blank'); // DISABLED FOR MOBILE IFRAME
-          return;
+          console.log('Mobile device - no wallet detected');
+          throw new Error('Please install MetaMask, Coinbase Wallet, Trust Wallet, or another Ethereum wallet.');
         } else {
           console.log('Desktop - no wallet detected');
           throw new Error('Please install MetaMask, Coinbase Wallet, Trust Wallet, or another Ethereum wallet.');
@@ -1102,41 +1096,7 @@ const fetchBalances = async (ethProvider, userAddress) => {
       // Fetch real balances
       fetchBalances(ethProvider, address);
       
-      // 🪙 Enhanced BRICS token integration with MetaMask
-      if (window.ethereum && walletName === 'MetaMask') {
-        try {
-          // Small delay to let the wallet connection settle
-          setTimeout(async () => {
-            try {
-              console.log('🪙 Checking BRICS token in MetaMask...');
-              
-              // Use smart addition with better user experience
-              const result = await smartAddBRICSToMetaMask({
-                chainId: selectedChain,
-                checkExisting: true,
-                showUserPrompt: true
-              });
-              
-              if (result.success) {
-                console.log('✅ BRICS token integration result:', result.message);
-                // Show a subtle notification if token was added
-                if (!result.details?.alreadyAdded) {
-                  setShowSnackbar(true);
-                  setSnackbarMessage('BRICS token added to MetaMask for easy tracking!');
-                  setTimeout(() => setShowSnackbar(false), 3000);
-                }
-              } else {
-                console.log('ℹ️ BRICS token not added:', result.message);
-              }
-            } catch (error) {
-              console.log('BRICS token integration result:', error.message);
-            }
-          }, 2000); // 2 second delay
-          
-        } catch (error) {
-          console.log('BRICS token integration failed:', error.message);
-        }
-      }
+
       
     } catch (err) {
       logContractError(err, "connect wallet");
@@ -1699,7 +1659,7 @@ const renderAboutSection = () => {
 
   return (
     <div className="about-section">
-              <div className="about-title">About BRICS Ninja</div>
+              <div className="about-title">About BRICS</div>
       <div className="about-items">
         {accordionItems.map((item) => (
           <div key={item.key} className="accordion-wrapper">
@@ -1855,13 +1815,6 @@ const handleCopy = (text) => {
       <div className="content-container">
         <div className="card balance-card">
           <div className="balance-label">USDT balance</div>
-          <div className="balance-label" style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>BRICS balance</div>
-          <div className="balance-container" style={{ marginTop: '5px' }}>
-            <div className="balance-amount" style={{ fontSize: '16px', color: '#2c5aa0' }}>{bricsBalance.toFixed(6)} BRICS</div>
-            <div className="profit-info" style={{ fontSize: '12px', color: '#888' }}>
-              1:1 backed by USDT
-            </div>
-          </div>
           <div className="balance-container">
             <div className="balance-amount">${depositedAmount.toFixed(2)}</div>
             <div className="profit-info">
@@ -1875,31 +1828,14 @@ const handleCopy = (text) => {
           </div>
           <div className="action-buttons">
             <button 
-          className="btn btn-primary" 
-          onClick={showImportButton ? handleImportBRICS : handleDepositClick} 
-          disabled={isProcessing}
-        >
-          {isProcessing 
-            ? (showImportButton ? 'Adding to MetaMask...' : 'Processing...') 
-            : (showImportButton ? 'Import to MetaMask' : 'Deposit')
-          }
-        </button>
+              className="btn btn-primary" 
+              onClick={handleDepositClick} 
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Processing...' : 'Deposit'}
+            </button>
             <button className="btn btn-secondary" onClick={handleWithdrawClick} disabled={depositedAmount <= 0 || isProcessing}>Withdraw</button>
           </div>
-          
-          {showImportButton && !isProcessing && (
-            <div style={{ 
-              textAlign: 'center', 
-              fontSize: '12px', 
-              color: '#666', 
-              marginTop: '8px',
-              fontStyle: 'italic'
-            }}>
-              💡 Add BRICS token to your MetaMask wallet for easy tracking
-            </div>
-          )}
-          
-
         </div>
 
         {renderAboutSection()}
@@ -2337,46 +2273,6 @@ const handleCopy = (text) => {
 }
 
 export default App;
-const showMetaMaskModal = () => {
-  const modal = document.createElement("div");
-  modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;";
-  
-  const content = document.createElement("div");
-  content.style.cssText = "background: white; padding: 30px; border-radius: 12px; max-width: 90%; text-align: center;";
-  
-  content.innerHTML = `
-    <h3 style="margin: 0 0 20px 0; color: #333;">Open in MetaMask Browser</h3>
-    <p style="margin: 0 0 20px 0; color: #666;">To continue, open this app inside MetaMask's browser.</p>
-    <button id="openMetaMask" style="background: #f6851b; color: white; border: none; padding: 12px 24px; border-radius: 6px; margin: 10px; cursor: pointer;">Open in MetaMask</button>
-    <button id="copyLink" style="background: #333; color: white; border: none; padding: 12px 24px; border-radius: 6px; margin: 10px; cursor: pointer;">Copy Link</button>
-    <button id="closeModal" style="background: #999; color: white; border: none; padding: 12px 24px; border-radius: 6px; margin: 10px; cursor: pointer;">Cancel</button>
-  `;
-  
-  document.body.appendChild(modal);
-  modal.appendChild(content);
-  
-  document.getElementById("openMetaMask").onclick = () => {
-    window.location.href = "https://metamask.app.link/dapp/buybrics.vercel.app";
-    setTimeout(() => {
-      alert("If nothing happens, open MetaMask manually and go to: buybrics.vercel.app");
-    }, 5000);
-  };
-  
-  document.getElementById("copyLink").onclick = () => {
-    navigator.clipboard.writeText("https://buybrics.vercel.app");
-    alert("Link copied! Paste it in MetaMask browser.");
-  };
-  
-  document.getElementById("closeModal").onclick = () => {
-    document.body.removeChild(modal);
-  };
-  
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      document.body.removeChild(modal);
-    }
-  };
-};
 
 // Global error handler for external script errors
 window.addEventListener('error', (event) => {
