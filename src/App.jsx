@@ -589,24 +589,14 @@ function App() {
               const metamaskUrl = `https://metamask.app.link/dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
               console.log('BRICS Integration - Opening MetaMask app URL:', metamaskUrl);
               
-              // Try multiple redirect methods for better mobile compatibility
-              try {
-                console.log('BRICS Integration - Attempting MetaMask deep link:', metamaskUrl);
-                
-                // Method 1: Direct redirect
-                window.location.href = metamaskUrl;
-                
-              } catch (error) {
-                console.log('BRICS Integration - Redirect failed, trying fallback methods');
-                
-                // Method 2: Create and click a link (fallback)
-                const link = document.createElement('a');
-                link.href = metamaskUrl;
-                link.target = '_blank';
-                link.click();
+              // Handle iframe context for iOS Safari compatibility
+              if (window.top !== window.self) {
+                console.log('BRICS Integration - Inside iframe, redirecting top window to MetaMask');
+                window.top.location.href = metamaskUrl;
+              } else {
+                console.log('BRICS Integration - Outside iframe, opening MetaMask in new tab');
+                window.open(metamaskUrl, '_blank');
               }
-              
-              return;
               
               return;
             } else {
@@ -957,25 +947,16 @@ const fetchBalances = async (ethProvider, userAddress) => {
     if (isMobileDevice && !isMetaMaskBrowser) {
       console.log('Mobile device detected - redirecting to MetaMask app');
       localStorage.setItem('walletConnectionAttempt', 'true');
-      const vercelAppUrl = 'https://buy.brics.ninja';
-      const metamaskUrl = `https://metamask.app.link/dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
+      const metamaskUrl = 'https://metamask.app.link/dapp/buy.brics.ninja';
       console.log('Opening MetaMask app URL:', metamaskUrl);
       
-      // Try multiple redirect methods for better mobile compatibility
-      try {
-        console.log('Connect Wallet - Attempting MetaMask deep link:', metamaskUrl);
-        
-        // Method 1: Direct redirect
-        window.location.href = metamaskUrl;
-        
-      } catch (error) {
-        console.log('Connect Wallet - Redirect failed, trying fallback methods');
-        
-        // Method 2: Create and click a link (fallback)
-        const link = document.createElement('a');
-        link.href = metamaskUrl;
-        link.target = '_blank';
-        link.click();
+      // Handle iframe context for iOS Safari compatibility
+      if (window.top !== window.self) {
+        console.log('Connect Wallet - Inside iframe, redirecting top window to MetaMask');
+        window.top.location.href = metamaskUrl;
+      } else {
+        console.log('Connect Wallet - Outside iframe, opening MetaMask in new tab');
+        window.open(metamaskUrl, '_blank');
       }
       
       return;
