@@ -2584,28 +2584,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  sendJSONResponse(res, 404, {
-    success: false,
-    message: 'The requested endpoint does not exist',
-    error: 'NotFoundError',
-    code: 404
-  });
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 4000;
-  app.listen(PORT, async () => {
-    console.log(`Server running on port ${PORT}`);
-    await initializeServer();
-  });
-} else {
-  // Production mode - initialize immediately
-  initializeServer();
-}
-
-// Add this new endpoint after the existing endpoints
+// Add this new endpoint before the 404 handler
 app.post('/api/fix-user-balance', async (req, res) => {
   try {
     const { userAddress, amount } = req.body;
@@ -2665,5 +2644,26 @@ app.post('/api/fix-user-balance', async (req, res) => {
     });
   }
 });
+
+// 404 handler
+app.use('*', (req, res) => {
+  sendJSONResponse(res, 404, {
+    success: false,
+    message: 'The requested endpoint does not exist',
+    error: 'NotFoundError',
+    code: 404
+  });
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 4000;
+  app.listen(PORT, async () => {
+    console.log(`Server running on port ${PORT}`);
+    await initializeServer();
+  });
+} else {
+  // Production mode - initialize immediately
+  initializeServer();
+}
 
 export default app;
