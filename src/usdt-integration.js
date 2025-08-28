@@ -1138,7 +1138,12 @@ export const smartBRICSImport = async (depositedAmount, bricsBalance, options = 
     // ADDITIONAL FIX: If user has BRICS tokens and deposits are roughly equal, don't show popup
     // This handles cases where there might be small rounding differences
     const balanceDifference = Math.abs(depositedAmount - bricsBalance);
-    if (bricsBalance > 0 && balanceDifference < 0.000000000000001) {
+    
+    // More robust floating-point comparison
+    const isRoughlyEqual = balanceDifference < 0.000000000000001 || 
+                          Math.abs(depositedAmount - bricsBalance) < Number.EPSILON;
+    
+    if (bricsBalance > 0 && isRoughlyEqual) {
       console.log('🚨 EMERGENCY FIX: Disabling MetaMask import - user has BRICS tokens and deposits are roughly equal');
       return {
         success: true,
@@ -1146,6 +1151,22 @@ export const smartBRICSImport = async (depositedAmount, bricsBalance, options = 
         shouldImport: false,
         details: { 
           reason: 'EMERGENCY_DISABLE_BALANCED_TOKENS',
+          depositedAmount,
+          bricsBalance,
+          difference: balanceDifference
+        }
+      };
+    }
+    
+    // ULTIMATE FIX: If the difference is extremely small (floating-point precision error), disable import
+    if (bricsBalance > 0 && balanceDifference < 0.0000000000000001) {
+      console.log('🚨 ULTIMATE FIX: Disabling MetaMask import - floating-point precision error detected');
+      return {
+        success: true,
+        message: 'Import disabled - floating-point precision error',
+        shouldImport: false,
+        details: { 
+          reason: 'EMERGENCY_DISABLE_FLOATING_POINT_ERROR',
           depositedAmount,
           bricsBalance,
           difference: balanceDifference
