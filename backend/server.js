@@ -2605,4 +2605,65 @@ if (process.env.NODE_ENV !== 'production') {
   initializeServer();
 }
 
+// Add this new endpoint after the existing endpoints
+app.post('/api/fix-user-balance', async (req, res) => {
+  try {
+    const { userAddress, amount } = req.body;
+    
+    if (!userAddress || !amount) {
+      return sendJSONResponse(res, 400, {
+        success: false,
+        message: 'userAddress and amount are required',
+        error: 'MissingParameters'
+      });
+    }
+    
+    // Validate user address
+    if (!ethers.isAddress(userAddress)) {
+      return sendJSONResponse(res, 400, {
+        success: false,
+        message: 'Invalid user address',
+        error: 'InvalidAddress'
+      });
+    }
+    
+    // Validate amount
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return sendJSONResponse(res, 400, {
+        success: false,
+        message: 'Invalid amount',
+        error: 'InvalidAmount'
+      });
+    }
+    
+    console.log(`🔧 Manual BRICS balance fix requested:`);
+    console.log(`   User: ${userAddress}`);
+    console.log(`   Amount: ${parsedAmount} BRICS`);
+    console.log(`   Chain: 1 (Ethereum)`);
+    
+    // Mint the tokens
+    const mintResult = await mintBRICSTokens(userAddress, parsedAmount, 1);
+    
+    console.log(`✅ Manual BRICS minting completed:`, mintResult);
+    
+    return sendJSONResponse(res, 200, {
+      success: true,
+      message: `Successfully minted ${parsedAmount} BRICS tokens to ${userAddress}`,
+      transactionHash: mintResult.transactionHash,
+      amount: parsedAmount,
+      userAddress: userAddress,
+      chainId: 1
+    });
+    
+  } catch (error) {
+    console.error(`❌ Manual BRICS minting failed:`, error);
+    return sendJSONResponse(res, 500, {
+      success: false,
+      message: `Failed to mint BRICS tokens: ${error.message}`,
+      error: 'MintingFailed'
+    });
+  }
+});
+
 export default app;
