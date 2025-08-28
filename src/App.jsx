@@ -939,12 +939,6 @@ const fetchBalances = async (ethProvider, userAddress) => {
 
   
   const connectWallet = async () => {
-    // Debounce: prevent multiple simultaneous connection attempts
-    if (isConnecting) {
-      console.log('Wallet connection already in progress, skipping...');
-      return;
-    }
-    
     setError(null);
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS|FxiOS/i.test(navigator.userAgent) || 
                           (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
@@ -984,6 +978,12 @@ const fetchBalances = async (ethProvider, userAddress) => {
         link.click();
       }
       
+      return;
+    }
+    
+    // Debounce: prevent multiple simultaneous connection attempts (AFTER mobile redirect logic)
+    if (isConnecting) {
+      console.log('Wallet connection already in progress, skipping...');
       return;
     }
     
