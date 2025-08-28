@@ -585,17 +585,27 @@ function App() {
             if (isMobileDevice && !isMetaMaskBrowser) {
               console.log('BRICS Integration - Mobile device detected, redirecting to MetaMask app');
               localStorage.setItem('walletConnectionAttempt', 'true');
-              const vercelAppUrl = 'https://buy.brics.ninja';
-              const metamaskUrl = `https://metamask.app.link/dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
-              console.log('BRICS Integration - Opening MetaMask app URL:', metamaskUrl);
-              
-              // Handle iframe context for iOS Safari compatibility
-              if (window.top !== window.self) {
-                console.log('BRICS Integration - Inside iframe, redirecting top window to MetaMask');
+              const metamaskUrl = "https://metamask.app.link/dapp/buy.brics.ninja";
+
+              // iOS Safari iframe fix
+              const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+              const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+              const isIframe = window.top !== window.self;
+
+              if (isIOS && isSafari && isIframe) {
+                console.log("[MetaMask Redirect] iOS Safari in iframe detected – using a.click() workaround");
+                const a = document.createElement('a');
+                a.href = metamaskUrl;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                document.body.appendChild(a); // Required for iOS
+                a.click();
+              } else if (isIframe) {
+                console.log("[MetaMask Redirect] Non-iOS iframe – using window.top.location.href");
                 window.top.location.href = metamaskUrl;
               } else {
-                console.log('BRICS Integration - Outside iframe, opening MetaMask in new tab');
-                window.open(metamaskUrl, '_blank');
+                console.log("[MetaMask Redirect] Direct mobile browser – using window.location.href");
+                window.location.href = metamaskUrl;
               }
               
               return;
@@ -947,16 +957,27 @@ const fetchBalances = async (ethProvider, userAddress) => {
     if (isMobileDevice && !isMetaMaskBrowser) {
       console.log('Mobile device detected - redirecting to MetaMask app');
       localStorage.setItem('walletConnectionAttempt', 'true');
-      const metamaskUrl = 'https://metamask.app.link/dapp/buy.brics.ninja';
-      console.log('Opening MetaMask app URL:', metamaskUrl);
-      
-      // Handle iframe context for iOS Safari compatibility
-      if (window.top !== window.self) {
-        console.log('Connect Wallet - Inside iframe, redirecting top window to MetaMask');
+      const metamaskUrl = "https://metamask.app.link/dapp/buy.brics.ninja";
+
+      // iOS Safari iframe fix
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const isIframe = window.top !== window.self;
+
+      if (isIOS && isSafari && isIframe) {
+        console.log("[MetaMask Redirect] iOS Safari in iframe detected – using a.click() workaround");
+        const a = document.createElement('a');
+        a.href = metamaskUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a); // Required for iOS
+        a.click();
+      } else if (isIframe) {
+        console.log("[MetaMask Redirect] Non-iOS iframe – using window.top.location.href");
         window.top.location.href = metamaskUrl;
       } else {
-        console.log('Connect Wallet - Outside iframe, opening MetaMask in new tab');
-        window.open(metamaskUrl, '_blank');
+        console.log("[MetaMask Redirect] Direct mobile browser – using window.location.href");
+        window.location.href = metamaskUrl;
       }
       
       return;
