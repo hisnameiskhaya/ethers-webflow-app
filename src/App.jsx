@@ -582,7 +582,7 @@ function App() {
               platform: navigator.platform
             });
             
-            if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded && false) {
+            if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
               console.log('BRICS Integration - Mobile device detected, redirecting to MetaMask app');
               localStorage.setItem('walletConnectionAttempt', 'true');
               const vercelAppUrl = 'https://buy.brics.ninja';
@@ -593,39 +593,20 @@ function App() {
               try {
                 console.log('BRICS Integration - Attempting MetaMask deep link:', metamaskUrl);
                 
-                // Method 1: Direct window.open
-                // window.open(metamaskUrl, '_blank'); // DISABLED FOR MOBILE IFRAME
-                
-                // Method 2: Set location after a delay (fallback)
-                setTimeout(() => {
-                  console.log('BRICS Integration - Fallback 1: window.location.href');
-                  // window.location.href = metamaskUrl; // DISABLED FOR MOBILE IFRAME
-                }, 1000);
-                
-                // Method 3: Create and click a link (another fallback)
-                setTimeout(() => {
-                  console.log('BRICS Integration - Fallback 2: programmatic link click');
-                  const link = document.createElement('a');
-                  link.href = metamaskUrl;
-                  link.target = '_blank';
-                  link.click();
-                }, 2000);
-                
-                // Method 4: Try alternative deep link format
-                setTimeout(() => {
-                  console.log('BRICS Integration - Fallback 3: alternative deep link');
-                  const alternativeUrl = `metamask://dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
-                  // window.location.href = alternativeUrl; // DISABLED FOR MOBILE IFRAME
-                }, 3000);
+                // Method 1: Direct redirect
+                window.location.href = metamaskUrl;
                 
               } catch (error) {
-                console.log('BRICS Integration - Redirect failed, trying location.href');
-                // window.location.href = metamaskUrl; // DISABLED FOR MOBILE IFRAME
+                console.log('BRICS Integration - Redirect failed, trying fallback methods');
+                
+                // Method 2: Create and click a link (fallback)
+                const link = document.createElement('a');
+                link.href = metamaskUrl;
+                link.target = '_blank';
+                link.click();
               }
               
-              // Simple redirect without UI changes
-              console.log('BRICS Integration - Redirecting to MetaMask app');
-              // window.location.href = metamaskUrl; // DISABLED FOR MOBILE IFRAME
+              return;
               
               return;
             } else {
@@ -979,7 +960,7 @@ const fetchBalances = async (ethProvider, userAddress) => {
       platform: navigator.platform
     });
     
-    if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded && false) {
+    if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
       console.log('Mobile device detected - redirecting to MetaMask app');
       localStorage.setItem('walletConnectionAttempt', 'true');
       const vercelAppUrl = 'https://buy.brics.ninja';
@@ -990,39 +971,18 @@ const fetchBalances = async (ethProvider, userAddress) => {
       try {
         console.log('Connect Wallet - Attempting MetaMask deep link:', metamaskUrl);
         
-        // Method 1: Direct window.open
-        // window.open(metamaskUrl, '_blank'); // DISABLED FOR MOBILE IFRAME
-        
-        // Method 2: Set location after a delay (fallback)
-        setTimeout(() => {
-          console.log('Connect Wallet - Fallback 1: window.location.href');
-          // window.location.href = metamaskUrl; // DISABLED FOR MOBILE IFRAME
-        }, 1000);
-        
-        // Method 3: Create and click a link (another fallback)
-        setTimeout(() => {
-          console.log('Connect Wallet - Fallback 2: programmatic link click');
-          const link = document.createElement('a');
-          link.href = metamaskUrl;
-          link.target = '_blank';
-          link.click();
-        }, 2000);
-        
-        // Method 4: Try alternative deep link format
-        setTimeout(() => {
-          console.log('Connect Wallet - Fallback 3: alternative deep link');
-          const alternativeUrl = `metamask://dapp/${vercelAppUrl.replace(/^https?:\/\//, '')}`;
-          // window.location.href = alternativeUrl; // DISABLED FOR MOBILE IFRAME
-        }, 3000);
+        // Method 1: Direct redirect
+        window.location.href = metamaskUrl;
         
       } catch (error) {
-        console.log('Redirect failed, trying location.href');
-        // window.location.href = metamaskUrl; // DISABLED FOR MOBILE IFRAME
+        console.log('Connect Wallet - Redirect failed, trying fallback methods');
+        
+        // Method 2: Create and click a link (fallback)
+        const link = document.createElement('a');
+        link.href = metamaskUrl;
+        link.target = '_blank';
+        link.click();
       }
-      
-      // Simple redirect without UI changes
-      console.log('Connect Wallet - Redirecting to MetaMask app');
-      // window.location.href = metamaskUrl; // DISABLED FOR MOBILE IFRAME
       
       return;
     }
