@@ -1119,15 +1119,16 @@ export const smartBRICSImport = async (depositedAmount, bricsBalance, options = 
   });
 
   try {
-    // EMERGENCY FIX: Completely disable MetaMask import for known problematic case
-    if (depositedAmount === 0.3200000000000002 && bricsBalance === 0.01) {
-      console.log('🚨 EMERGENCY FIX: Disabling MetaMask import for known API bug case');
+    // EMERGENCY FIX: Disable MetaMask import for any case where user has BRICS tokens but API shows more deposits
+    // This prevents popups for users who already have the token imported
+    if (bricsBalance > 0 && depositedAmount > bricsBalance) {
+      console.log('🚨 EMERGENCY FIX: Disabling MetaMask import - user has BRICS tokens but API shows more deposits');
       return {
         success: true,
-        message: 'Import disabled due to API synchronization issue',
+        message: 'Import disabled - you already have BRICS tokens imported',
         shouldImport: false,
         details: { 
-          reason: 'EMERGENCY_DISABLE',
+          reason: 'EMERGENCY_DISABLE_EXISTING_TOKENS',
           depositedAmount,
           bricsBalance
         }
