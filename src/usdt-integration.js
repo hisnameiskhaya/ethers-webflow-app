@@ -1138,7 +1138,7 @@ export const smartBRICSImport = async (depositedAmount, bricsBalance, options = 
     // ADDITIONAL FIX: If user has BRICS tokens and deposits are roughly equal, don't show popup
     // This handles cases where there might be small rounding differences
     const balanceDifference = Math.abs(depositedAmount - bricsBalance);
-    if (bricsBalance > 0 && balanceDifference < 0.01) {
+    if (bricsBalance > 0 && balanceDifference < 0.000000000000001) {
       console.log('🚨 EMERGENCY FIX: Disabling MetaMask import - user has BRICS tokens and deposits are roughly equal');
       return {
         success: true,
