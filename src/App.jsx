@@ -144,67 +144,11 @@ const getMultiChainUSDTBalanceLocal = async (userAddress) => {
   if (!userAddress) return {};
 
   const balances = {};
-  const chainIds = [1, 8453, 10, 42161];
-  const rpcEndpoints = {
-    1: process.env.ALCHEMY_MAINNET_RPC || 'https://mainnet.infura.io/v3/423dc5401ea74f279b1b90f58f2bee71' || 'https://rpc.ankr.com/eth',
-    8453: 'https://mainnet.base.org',
-    10: 'https://mainnet.optimism.io',
-    42161: 'https://arb1.arbitrum.io/rpc',
-  };
-  const networkConfigs = {
-    1: { chainId: 1, name: 'Ethereum' },
-    8453: { chainId: 8453, name: 'Base' },
-    10: { chainId: 10, name: 'Optimism' },
-    42161: { chainId: 42161, name: 'Arbitrum' },
-  };
-
-  await Promise.all(
-    chainIds.map(async (chainId) => {
-      const retryDelay = (attempt) => new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const rpcUrl = rpcEndpoints[chainId];
-          if (!rpcUrl) {
-            console.warn(`No RPC URL defined for chain ${chainId}`);
-            balances[chainId] = 0;
-            break;
-          }
-
-          const provider = new ethers.JsonRpcProvider(rpcUrl, networkConfigs[chainId]);
-          const network = await provider.getNetwork();
-          console.log(`Connected to chain ${chainId} (${getChainName(chainId)}), RPC: ${rpcUrl}, Detected network: ${network.name}`);
-
-          const contractAddresses = {
-            1: '0xdac17f958d2ee523a2206206994597c13d831ec7',
-            8453: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
-            10: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58',
-            42161: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
-          };
-
-          const usdtAddress = contractAddresses[chainId];
-          if (!usdtAddress) {
-            console.warn(`No USDT address for chain ${chainId}`);
-            balances[chainId] = 0;
-            break;
-          }
-
-          const contract = new ethers.Contract(usdtAddress, USDT_ABI, provider);
-          const decimals = await contract.decimals();
-          const balance = await contract.balanceOf(userAddress);
-          balances[chainId] = parseFloat(ethers.formatUnits(balance, decimals));
-          console.log(`Balance on chain ${chainId} (${getChainName(chainId)}): ${balances[chainId]} USDT`);
-          break; // Success, exit retry loop
-        } catch (error) {
-          if (attempt === 2) {
-            console.error(`Failed after retries for chain ${chainId}:`, error.message);
-            balances[chainId] = 0;
-          } else {
-            await retryDelay(attempt + 1);
-          }
-        }
-      }
-    })
-  );
+  const rpcUrl = process.env.ALCHEMY_MAINNET_RPC || 'https://mainnet.infura.io/v3/423dc5401ea74f279b1b90f58f2bee71';
+  const provider = new ethers.JsonRpcProvider(rpcUrl, { chainId: 1, name: 'Ethereum' });
+  const contract = new ethers.Contract('0xdac17f958d2ee523a2206206994597c13d831ec7', USDT_ABI, provider);
+  const balance = await contract.balanceOf(userAddress);
+  balances[1] = parseFloat(ethers.formatUnits(balance, 6));
 
   return balances;
 };
@@ -790,6 +734,22 @@ function App() {
     }
   };
 
+// BRICS balance caching to prevent redundant calls
+let cachedBRICSBalance = null;
+let lastBRICSCheck = 0;
+
+const getBRICSBalanceCached = async (provider, address) => {
+  const now = Date.now();
+  if (cachedBRICSBalance && (now - lastBRICSCheck) < 30000) {
+    return cachedBRICSBalance;
+  }
+
+  const balance = await getBRICSBalance(provider, address);
+  cachedBRICSBalance = balance;
+  lastBRICSCheck = now;
+  return balance;
+};
+
 // Smart MetaMask import trigger function
 const triggerSmartBRICSImport = async (ethProvider, userAddress, depositedAmount, chainId) => {
   try {
@@ -801,8 +761,8 @@ const triggerSmartBRICSImport = async (ethProvider, userAddress, depositedAmount
       return { success: true, shouldImport: false };
     }
     
-    // Get current BRICS balance from wallet
-    const bricsBalance = await getBRICSBalance(ethProvider, userAddress);
+    // Get current BRICS balance from wallet (cached)
+    const bricsBalance = await getBRICSBalanceCached(ethProvider, userAddress);
     console.log('🧠 BRICS balance check result:', { depositedAmount, bricsBalance });
     
     // Trigger smart import logic
