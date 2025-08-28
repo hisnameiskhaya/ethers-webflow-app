@@ -869,10 +869,13 @@ const fetchBalances = async (ethProvider, userAddress) => {
 
       setDeposits(deposits.filter(d => d.chainId === highestBalanceChain));
       
-      // Trigger smart BRICS import after balance update
+      // Trigger smart BRICS import after balance update (non-blocking)
       if (totalDeposited > 0) {
         console.log('🧠 Deposits found, checking if BRICS import is needed...');
-        await triggerSmartBRICSImport(ethProvider, userAddress, totalDeposited, highestBalanceChain);
+        // Run BRICS import check in background to avoid blocking UI
+        setTimeout(() => {
+          triggerSmartBRICSImport(ethProvider, userAddress, totalDeposited, highestBalanceChain);
+        }, 100);
       }
     } else {
       setDepositedAmount(0);
