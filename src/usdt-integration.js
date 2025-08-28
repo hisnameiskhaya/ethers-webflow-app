@@ -1160,7 +1160,7 @@ export const smartBRICSImport = async (depositedAmount, bricsBalance, options = 
     
     // ULTIMATE FIX: If the difference is extremely small (floating-point precision error), disable import
     if (bricsBalance > 0 && balanceDifference < 0.0000000000000001) {
-      console.log('🚨 ULTIMATE FIX: Disabling MetaMask import - floating-point precision error detected');
+      console.log('🚨 ULTIMATE FIX: Disabling MetaMask import - floating-point precision error detected - DEPLOYMENT FORCE');
       return {
         success: true,
         message: 'Import disabled - floating-point precision error',
