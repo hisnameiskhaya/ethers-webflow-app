@@ -1135,6 +1135,24 @@ export const smartBRICSImport = async (depositedAmount, bricsBalance, options = 
       };
     }
     
+    // ADDITIONAL FIX: If user has BRICS tokens and deposits are roughly equal, don't show popup
+    // This handles cases where there might be small rounding differences
+    const balanceDifference = Math.abs(depositedAmount - bricsBalance);
+    if (bricsBalance > 0 && balanceDifference < 0.01) {
+      console.log('🚨 EMERGENCY FIX: Disabling MetaMask import - user has BRICS tokens and deposits are roughly equal');
+      return {
+        success: true,
+        message: 'Import disabled - your BRICS balance matches your deposits',
+        shouldImport: false,
+        details: { 
+          reason: 'EMERGENCY_DISABLE_BALANCED_TOKENS',
+          depositedAmount,
+          bricsBalance,
+          difference: balanceDifference
+        }
+      };
+    }
+    
     // TEMPORARY FIX: Handle the case where API returns wrong total but deposits are actually 0
     // If depositedAmount is 0.32 but bricsBalance is 0.01, and we know deposits should be 0,
     // then don't trigger import
