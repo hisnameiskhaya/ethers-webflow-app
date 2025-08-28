@@ -582,7 +582,7 @@ function App() {
               platform: navigator.platform
             });
             
-            if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
+            if (isMobileDevice && !isMetaMaskBrowser) {
               console.log('BRICS Integration - Mobile device detected, redirecting to MetaMask app');
               localStorage.setItem('walletConnectionAttempt', 'true');
               const vercelAppUrl = 'https://buy.brics.ninja';
@@ -954,7 +954,7 @@ const fetchBalances = async (ethProvider, userAddress) => {
       platform: navigator.platform
     });
     
-    if (isMobileDevice && !isMetaMaskBrowser && !isEmbedded) {
+    if (isMobileDevice && !isMetaMaskBrowser) {
       console.log('Mobile device detected - redirecting to MetaMask app');
       localStorage.setItem('walletConnectionAttempt', 'true');
       const vercelAppUrl = 'https://buy.brics.ninja';
